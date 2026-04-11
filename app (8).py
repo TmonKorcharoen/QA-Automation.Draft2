@@ -3,18 +3,18 @@ import pandas as pd
 import re
 import io
 from datetime import datetime
- 
+
 st.set_page_config(
     page_title="TransQA Studio",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
- 
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
- 
+
 html, body, [class*="css"], .stApp {
     font-family: 'Sarabun', sans-serif !important;
     background-color: #f5f0e8 !important;
@@ -24,7 +24,7 @@ html, body, [class*="css"], .stApp {
     padding: 0 2.5rem 3rem 2.5rem !important;
     max-width: 1300px !important;
 }
- 
+
 /* Wide Header */
 .app-header {
     background: linear-gradient(90deg, #2e7d32 0%, #43a047 100%);
@@ -38,21 +38,21 @@ html, body, [class*="css"], .stApp {
 .app-header-icon  { font-size: 2rem; }
 .app-header-title { font-size: 1.7rem; font-weight: 700; margin: 0; }
 .app-header-sub   { font-size: 0.95rem; margin: 0; opacity: 0.85; font-weight: 400; }
- 
+
 /* Section title */
 .sec-title {
     font-size: 1.05rem; font-weight: 600; color: #2e7d32;
     margin: 1.4rem 0 0.8rem 0; padding-bottom: 0.4rem;
     border-bottom: 1px solid #ddd;
 }
- 
+
 /* File badge */
 .file-info {
     background: #edf5ed; border: 1px solid #c8e6c9; border-radius: 8px;
     padding: 0.5rem 1rem; font-size: 0.92rem; color: #2e7d32;
     display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
 }
- 
+
 /* Stats row */
 .stats-row { display: flex; gap: 12px; margin: 1.2rem 0; flex-wrap: wrap; }
 .stat-box  {
@@ -67,7 +67,7 @@ html, body, [class*="css"], .stApp {
 .stat-minor .s-num { color: #f57c00; } .stat-minor { border-color: #ffcc80; }
 .stat-major .s-num { color: #e64a19; } .stat-major { border-color: #ffab91; }
 .stat-crit  .s-num { color: #c62828; } .stat-crit  { border-color: #ef9a9a; }
- 
+
 /* QA Table */
 .qa-table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; font-size: 0.97rem; }
 .qa-table thead tr { border-bottom: 2px solid #ccc; }
@@ -88,7 +88,7 @@ html, body, [class*="css"], .stApp {
 .sev-major { color: #e64a19; }
 .sev-crit  { color: #c62828; }
 .td-detail { color: #444; font-size: 0.9rem; min-width: 160px; }
- 
+
 /* Buttons */
 .stButton > button {
     background: #2e7d32 !important; color: white !important;
@@ -98,7 +98,7 @@ html, body, [class*="css"], .stApp {
     font-family: 'Sarabun', sans-serif !important;
 }
 .stButton > button:hover { background: #1b5e20 !important; }
- 
+
 /* Inputs */
 .stTextInput > div > div > input,
 .stTextArea  > div > div > textarea,
@@ -112,7 +112,7 @@ html, body, [class*="css"], .stApp {
     border-color: #43a047 !important;
     box-shadow: 0 0 0 2px rgba(67,160,71,0.15) !important;
 }
- 
+
 /* Tabs */
 .stTabs [data-baseweb="tab-list"] {
     border-bottom: 2px solid #ccc !important;
@@ -129,21 +129,21 @@ html, body, [class*="css"], .stApp {
 }
 .stTabs [data-baseweb="tab-highlight"],
 .stTabs [data-baseweb="tab-border"] { display: none !important; }
- 
+
 /* Expander */
 div[data-testid="stExpander"] {
     border: 1px solid #ddd !important; border-radius: 8px !important;
     background: #fffdf8 !important;
 }
- 
+
 /* Dataframe */
 .stDataFrame { border-radius: 8px; overflow: hidden; }
- 
+
 /* Caption / info */
 .stAlert { border-radius: 8px !important; }
 </style>
 """, unsafe_allow_html=True)
- 
+
 # ── State ────────────────────────────────────────────────────────────────────────
 def init_state():
     defaults = {
@@ -151,16 +151,19 @@ def init_state():
         "history": [],
         "style_guide": {
             "punctuation": [
-                {"symbol": ".",   "name": "จุด (Full Stop)",         "enabled": True,  "severity": "Minor"},
-                {"symbol": ",",   "name": "จุลภาค (Comma)",          "enabled": True,  "severity": "Minor"},
-                {"symbol": "!",   "name": "อัศเจรีย์ (Exclamation)", "enabled": True,  "severity": "Minor"},
-                {"symbol": "?",   "name": "ปรัศนี (Question Mark)",  "enabled": True,  "severity": "Minor"},
-                {"symbol": ":",   "name": "ทวิภาค (Colon)",          "enabled": True,  "severity": "Minor"},
-                {"symbol": ";",   "name": "อัฒภาค (Semicolon)",      "enabled": True,  "severity": "Minor"},
-                {"symbol": '"',   "name": "อัญประกาศคู่",            "enabled": True,  "severity": "Minor"},
-                {"symbol": "-",   "name": "ยัติภังค์ (Hyphen)",      "enabled": True,  "severity": "Minor"},
-                {"symbol": "—",   "name": "ยัติภังค์ยาว (Em Dash)",  "enabled": True,  "severity": "Minor"},
-                {"symbol": "...", "name": "จุดไข่ปลา (Ellipsis)",   "enabled": True,  "severity": "Minor"},
+                # ── ไวยากรณ์ภาษาอังกฤษ (grammar) — ปิด default เพราะภาษาไทยไม่ใช้
+                {"symbol": ".",  "name": "จุด (Full Stop)",          "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": ",",  "name": "จุลภาค (Comma)",           "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": "!",  "name": "อัศเจรีย์ (Exclamation)",  "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": "?",  "name": "ปรัศนี (Question Mark)",   "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": ":",  "name": "ทวิภาค (Colon)",           "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": ";",  "name": "อัฒภาค (Semicolon)",       "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": "-",  "name": "ยัติภังค์ (Hyphen)",       "type": "grammar", "enabled": False, "severity": "Minor"},
+                # ── อักขระพิเศษ (special) — เปิด default เพราะต้องคงไว้เสมอ
+                {"symbol": "...", "name": "จุดไข่ปลา (Ellipsis)",    "type": "special", "enabled": True,  "severity": "Minor"},
+                {"symbol": "—",  "name": "ยัติภังค์ยาว (Em Dash)",   "type": "special", "enabled": True,  "severity": "Minor"},
+                {"symbol": '"',  "name": "อัญประกาศคู่",             "type": "special", "enabled": True,  "severity": "Minor"},
+                {"symbol": "※",  "name": "เครื่องหมายอ้างอิง",      "type": "special", "enabled": False, "severity": "Minor"},
             ],
             "encoding": "UTF-8", "font": "", "tone": "Formal",
             "max_length_ratio": 1.5, "min_length_ratio": 0.5,
@@ -176,9 +179,9 @@ def init_state():
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
- 
+
 init_state()
- 
+
 # ── QA Engine ────────────────────────────────────────────────────────────────────
 PH_PAT  = re.compile(r'\{[^}]+\}|\[[^\]]+\]|%[sd\d]|<[^>]+>')
 NUM_PAT = re.compile(r'\b\d[\d,\.]*\b')
@@ -197,7 +200,7 @@ TH_TYPOS = {
 }
 SEV_EMOJI = {"Pass":"✅","Minor":"🟡","Major":"🟠","Critical":"🔴"}
 SEV_CLASS = {"Pass":"sev-pass","Minor":"sev-minor","Major":"sev-major","Critical":"sev-crit"}
- 
+
 # ปี พ.ศ. ↔ ค.ศ. ±543 — ถ้าเลขต่างกัน 543 ถือว่าตรงกัน
 def numbers_match(src_nums, tgt_nums):
     """คืน set ของตัวเลขใน source ที่ไม่มีใน target (รวม offset พ.ศ./ค.ศ.)"""
@@ -220,14 +223,14 @@ def numbers_match(src_nums, tgt_nums):
             if n not in tgt_set:
                 missing.append(n)
     return missing
- 
+
 def run_qa(df, src_col, tgt_col, rules, glossary, style):
     results = []
     for idx, row in df.iterrows():
         src = str(row[src_col]) if pd.notna(row[src_col]) else ""
         tgt = str(row[tgt_col]) if pd.notna(row[tgt_col]) else ""
         issues = []
- 
+
         # 1. Placeholder
         if rules.get("placeholders"):
             sp, tp = set(PH_PAT.findall(src)), set(PH_PAT.findall(tgt))
@@ -237,7 +240,7 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
             for m in tp - sp:
                 issues.append({"rule":"Placeholder","severity":"Major",
                     "detail":f"มีตัวแปร {m} เกินมาในคำแปล"})
- 
+
         # 2. ตัวเลข (รองรับ พ.ศ./ค.ศ.)
         if rules.get("numbers"):
             src_nums = NUM_PAT.findall(src)
@@ -245,7 +248,7 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
             for n in numbers_match(src_nums, tgt_nums):
                 issues.append({"rule":"ตัวเลข/ตัวเลข","severity":"Critical",
                     "detail":f"ตัวเลข หายไป: {n}"})
- 
+
         # 3. สัญลักษณ์เกิน
         if rules.get("extra_symbols"):
             skip = {'—','–',''',''','"','"','฿','×','·','•'}
@@ -255,21 +258,21 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
             if extra:
                 issues.append({"rule":"สัญลักษณ์","severity":"Minor",
                     "detail":f"มีสัญลักษณ์เพิ่มมาในคำแปล: {' '.join(sorted(extra))}"})
- 
+
         # 4. สะกดผิด (EN)
         if rules.get("spelling_en"):
             for w in re.findall(r'\b[a-zA-Z]+\b', tgt):
                 if w.lower() in EN_TYPOS:
                     issues.append({"rule":"Spelling EN","severity":"Minor",
                         "detail":f"น่าจะสะกดผิด: '{w}' → '{EN_TYPOS[w.lower()]}'"})
- 
+
         # 5. สะกดผิด (TH)
         if rules.get("spelling_th") and TH_PAT.search(tgt):
             for wrong, correct in TH_TYPOS.items():
                 if wrong in tgt:
                     issues.append({"rule":"Spelling TH","severity":"Minor",
                         "detail":f"น่าจะสะกดผิด: '{wrong}' → '{correct}'"})
- 
+
         # 6. Glossary — ตรวจว่าคำศัพท์ที่กำหนดไว้ถูกแปลถูกต้อง
         if rules.get("glossary_check") and glossary:
             for g in glossary:
@@ -286,16 +289,26 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
                     elif trans.lower() not in tgt.lower():
                         issues.append({"rule":"Glossary","severity":imp,
                             "detail":f"'{term}' ควรแปลว่า '{trans}' แต่ไม่พบในคำแปล"})
- 
+
         # 7. เครื่องหมายวรรคตอน
         if rules.get("punctuation"):
+            tgt_is_thai = bool(TH_PAT.search(tgt))
             for p in style.get("punctuation",[]):
-                if not p.get("enabled"): continue
-                sym, sev = p["symbol"], p.get("severity","Minor")
+                if not p.get("enabled"):
+                    continue
+                sym  = p["symbol"]
+                sev  = p.get("severity","Minor")
+                ptype = p.get("type","special")  # "grammar" | "special"
+
+                # เครื่องหมายไวยากรณ์ (. , ! ? : ; -) → ถ้า target เป็นภาษาไทย ข้ามได้
+                # เพราะภาษาไทยไม่มีกฎบังคับใช้เครื่องหมายเหล่านี้
+                if ptype == "grammar" and tgt_is_thai:
+                    continue
+
                 if src.count(sym) > 0 and tgt.count(sym) == 0:
                     issues.append({"rule":"เครื่องหมาย","severity":sev,
                         "detail":f"source มีเครื่องหมาย '{sym}' แต่ไม่พบในคำแปล"})
- 
+
         # 8. ความยาว
         if rules.get("length_check") and style.get("check_length") and len(src) > 0:
             ratio = len(tgt) / len(src)
@@ -305,7 +318,7 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
             elif ratio < style.get("min_length_ratio",0.5):
                 issues.append({"rule":"ความยาว","severity":"Minor",
                     "detail":f"คำแปลสั้นกว่าต้นฉบับ {ratio:.1f} เท่า (ต่ำกว่า {style.get('min_length_ratio',0.5)} เท่า)"})
- 
+
         # 9. Encoding
         if rules.get("encoding_check") and style.get("check_encoding"):
             try:
@@ -313,17 +326,17 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
             except Exception:
                 issues.append({"rule":"Encoding","severity":"Major",
                     "detail":f"คำแปลมีตัวอักษรที่ไม่รองรับใน {style.get('encoding','UTF-8')}"})
- 
+
         sevs = [i["severity"] for i in issues]
         status = "Critical" if "Critical" in sevs else "Major" if "Major" in sevs else "Minor" if sevs else "Pass"
         results.append({"row":idx+1,"source":src,"target":tgt,"status":status,"issues":issues})
     return results
- 
+
 def calc_stats(results):
     counts = {"Pass":0,"Minor":0,"Major":0,"Critical":0}
     for r in results: counts[r["status"]] = counts.get(r["status"],0) + 1
     return len(results), counts
- 
+
 def build_export_df(results):
     rows = []
     for r in results:
@@ -332,7 +345,7 @@ def build_export_df(results):
                 "Status":r["status"],"Rule":iss.get("rule","—"),
                 "ระดับ":iss.get("severity","Pass"),"รายละเอียด":iss.get("detail","")})
     return pd.DataFrame(rows)
- 
+
 # ── Header ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="app-header">
@@ -343,18 +356,18 @@ st.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
- 
+
 tab_qa, tab_glossary, tab_style, tab_history = st.tabs([
     "🔍  ตรวจสอบ QA", "📚  Glossary", "📐  Style Guide", "🕘  ประวัติ"
 ])
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 1 — QA CHECK
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_qa:
     st.markdown('<div class="sec-title">📂 อัปโหลดไฟล์</div>', unsafe_allow_html=True)
     uploaded = st.file_uploader("รองรับไฟล์ CSV, XLSX, TXT", type=["csv","xlsx","xls","txt"], key="qa_upload")
- 
+
     if uploaded:
         st.session_state["current_file"] = uploaded.name
         st.markdown(f'<div class="file-info">📄 {uploaded.name}</div>', unsafe_allow_html=True)
@@ -367,7 +380,7 @@ with tab_qa:
                 lines = uploaded.read().decode("utf-8").strip().split("\n")
                 df_raw = pd.DataFrame({"source": lines})
             st.session_state["df_raw"] = df_raw
- 
+
             cols = list(df_raw.columns)
             uc1, uc2 = st.columns(2)
             with uc1:
@@ -376,12 +389,12 @@ with tab_qa:
             with uc2:
                 tgt_def = next((c for c in cols if any(k in c.lower() for k in ["target","tgt","th","แปล"])), cols[min(1,len(cols)-1)])
                 st.session_state["target_col"] = st.selectbox("เลือกคอลัมน์คำแปล (Target)", cols, index=cols.index(tgt_def))
- 
+
             st.caption(f"ตัวอย่างข้อมูล 3 แถวแรก (ทั้งหมด {len(df_raw)} แถว)")
             st.dataframe(df_raw.head(3), use_container_width=True, hide_index=True)
         except Exception as e:
             st.error(f"ไม่สามารถโหลดไฟล์ได้: {e}")
- 
+
     st.markdown('<div class="sec-title">⚙️ เลือกกฎที่ต้องการตรวจ</div>', unsafe_allow_html=True)
     rules = st.session_state["qa_rules"]
     rc1, rc2, rc3 = st.columns(3)
@@ -397,20 +410,20 @@ with tab_qa:
         rules["punctuation"]    = st.toggle("ตรวจเครื่องหมายวรรคตอน",        rules["punctuation"])
         rules["length_check"]   = st.toggle("ตรวจความยาวของคำแปล",           rules["length_check"])
         rules["encoding_check"] = st.toggle("ตรวจ Encoding และ Font",         rules["encoding_check"])
- 
+
     st.write("")
     g_count = len(st.session_state["glossary"])
     if g_count > 0:
         st.caption(f"📚 Glossary พร้อมใช้งาน {g_count} คำ — จะนำมาตรวจเมื่อเปิดสวิตช์ 'ตรวจตามรายการ Glossary'")
     else:
         st.caption("📚 ยังไม่มี Glossary — ไปเพิ่มคำได้ที่แท็บ Glossary")
- 
+
     if st.button("▶  เริ่มตรวจสอบ", disabled=("df_raw" not in st.session_state)):
         with st.spinner("กำลังตรวจสอบ กรุณารอสักครู่…"):
             rules_snap    = dict(st.session_state["qa_rules"])
             glossary_snap = [dict(g) for g in st.session_state["glossary"]]
             style_snap    = dict(st.session_state["style_guide"])
- 
+
             results = run_qa(
                 st.session_state["df_raw"],
                 st.session_state["source_col"],
@@ -425,12 +438,12 @@ with tab_qa:
                 "total": total, "counts": counts, "results": results,
             })
         st.success(f"ตรวจสอบเสร็จแล้ว พบ {total} แถว")
- 
+
     # ── Results ──────────────────────────────────────────────────────────────────
     results = st.session_state.get("qa_results", [])
     if results:
         total, counts = calc_stats(results)
- 
+
         st.markdown(f"""
         <div class="stats-row">
           <div class="stat-box stat-total"><div class="s-num">{total}</div><div class="s-lbl">ทั้งหมด</div></div>
@@ -440,17 +453,17 @@ with tab_qa:
           <div class="stat-box stat-crit" ><div class="s-num">{counts.get('Critical',0)}</div><div class="s-lbl">🔴 Critical</div></div>
         </div>
         """, unsafe_allow_html=True)
- 
+
         pass_pct = counts.get("Pass",0) / total if total else 0
         st.progress(pass_pct, text=f"อัตราผ่าน: {pass_pct*100:.1f}%")
- 
+
         st.markdown('<div class="sec-title">กรองตามระดับความรุนแรง</div>', unsafe_allow_html=True)
         filter_sev = st.multiselect(
             "ระดับ", ["Critical","Major","Minor","Pass"],
             default=["Critical","Major","Minor"],
             label_visibility="collapsed",
         )
- 
+
         # Export
         exp_df = build_export_df(results)
         ec1, ec2, _ = st.columns([1.2, 1.2, 4])
@@ -466,7 +479,7 @@ with tab_qa:
             st.download_button("⬇ ดาวน์โหลด CSV", exp_df.to_csv(index=False).encode("utf-8-sig"),
                 file_name=f"qa_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
                 mime="text/csv", use_container_width=True)
- 
+
         # Build table rows — แสดงข้อความเต็ม ไม่ตัด
         filtered = [r for r in results if r["status"] in filter_sev]
         flat_rows = []
@@ -486,7 +499,7 @@ with tab_qa:
                     "row": r["row"], "source": r["source"], "target": r["target"],
                     "rule": "—", "severity": "Pass", "detail": "ไม่พบปัญหา",
                 })
- 
+
         if flat_rows:
             rows_html = ""
             for fr in flat_rows:
@@ -504,7 +517,7 @@ with tab_qa:
                   <td class="sev-cell {sc}">{em} {fr['severity']}</td>
                   <td class="td-detail">{fr['detail']}</td>
                 </tr>"""
- 
+
             st.markdown(f"""
             <table class="qa-table">
               <thead><tr>
@@ -520,7 +533,7 @@ with tab_qa:
             """, unsafe_allow_html=True)
         else:
             st.info("ไม่มีแถวที่ตรงกับระดับที่เลือก")
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 2 — GLOSSARY
 # ════════════════════════════════════════════════════════════════════════════════
@@ -531,7 +544,7 @@ with tab_glossary:
     with gb: g_trans = st.text_input("คำแปลที่ถูกต้อง",    key="g_trans", placeholder="เช่น ใบแจ้งหนี้")
     with gc: g_imp   = st.selectbox("ระดับความสำคัญ", ["Critical","Major","Minor"], key="g_imp")
     with gd: g_notes = st.text_input("หมายเหตุ / บริบท",  key="g_notes", placeholder="บริบทการใช้งาน")
- 
+
     if st.button("เพิ่มลงใน Glossary"):
         if g_term.strip():
             st.session_state["glossary"].append({
@@ -541,7 +554,7 @@ with tab_glossary:
             st.rerun()
         else:
             st.warning("กรุณาใส่คำต้นฉบับก่อน")
- 
+
     st.markdown('<div class="sec-title">📥 นำเข้า Glossary จากไฟล์</div>', unsafe_allow_html=True)
     st.caption("ไฟล์ควรมีคอลัมน์: term, translation, importance, notes")
     gfile = st.file_uploader("เลือกไฟล์ CSV หรือ XLSX", type=["csv","xlsx"], key="g_import")
@@ -563,13 +576,13 @@ with tab_glossary:
             st.rerun()
         except Exception as e:
             st.error(f"เกิดข้อผิดพลาด: {e}")
- 
+
     st.markdown(f'<div class="sec-title">📚 รายการ Glossary ทั้งหมด ({len(st.session_state["glossary"])} คำ)</div>', unsafe_allow_html=True)
     if st.session_state["glossary"]:
         search_g = st.text_input("🔍 ค้นหาคำ", key="g_search", placeholder="พิมพ์เพื่อกรอง…")
         filtered_g = [g for g in st.session_state["glossary"]
                       if not search_g or search_g.lower() in g["term"].lower() or search_g.lower() in g["translation"].lower()]
- 
+
         imp_label = {"Critical":"🔴 Critical","Major":"🟠 Major","Minor":"🟡 Minor"}
         for i, g in enumerate(filtered_g):
             real_idx = st.session_state["glossary"].index(g)
@@ -590,14 +603,14 @@ with tab_glossary:
                     st.write("")
                     if st.button("🗑 ลบ", key=f"gd_{real_idx}"):
                         st.session_state["glossary"].pop(real_idx); st.rerun()
- 
+
         gexp = pd.DataFrame(st.session_state["glossary"])
         st.download_button("⬇ ดาวน์โหลด Glossary (CSV)",
             gexp.to_csv(index=False).encode("utf-8-sig"),
             file_name="glossary.csv", mime="text/csv")
     else:
         st.info("ยังไม่มีคำใน Glossary เพิ่มคำได้ด้านบนเลยค่ะ")
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 3 — STYLE GUIDE
 # ════════════════════════════════════════════════════════════════════════════════
@@ -619,46 +632,65 @@ with tab_style:
         if sg["check_length"]:
             sg["max_length_ratio"] = st.number_input("คำแปลยาวได้สูงสุด (×)", 0.5, 5.0, float(sg.get("max_length_ratio",1.5)), 0.1)
             sg["min_length_ratio"] = st.number_input("คำแปลสั้นได้ต่ำสุด (×)", 0.1, 2.0, float(sg.get("min_length_ratio",0.5)), 0.1)
- 
+
     st.markdown('<div class="sec-title">✍️ กฎเครื่องหมายวรรคตอน</div>', unsafe_allow_html=True)
-    st.caption("เปิด/ปิดแต่ละเครื่องหมาย และกำหนดระดับความรุนแรงได้อิสระ")
- 
-    sev_bg = {"Minor":"#fff8e1","Major":"#fff3e0","Critical":"#fce4ec"}
+    st.markdown("""
+    <div style="background:#edf5ed;border:1px solid #c8e6c9;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;color:#2e7d32;line-height:1.6;">
+    <strong>💡 ประเภทเครื่องหมาย</strong><br>
+    <span style="background:#e3f2fd;color:#1565c0;padding:1px 7px;border-radius:4px;font-size:0.82rem;font-weight:600;">ไวยากรณ์</span>
+    &nbsp;เครื่องหมายที่เป็นส่วนหนึ่งของไวยากรณ์ภาษาอังกฤษ เช่น <code>. , ! ?</code> — ภาษาไทยไม่ต้องใช้ <strong>ปิดไว้ by default</strong><br>
+    <span style="background:#fce4ec;color:#880e4f;padding:1px 7px;border-radius:4px;font-size:0.82rem;font-weight:600;">อักขระพิเศษ</span>
+    &nbsp;สัญลักษณ์ที่ต้องคงไว้ในคำแปล เช่น <code>... — "</code> — <strong>ตรวจเสมอไม่ว่า target จะเป็นภาษาใด</strong>
+    </div>
+    """, unsafe_allow_html=True)
+
+    sev_bg   = {"Minor":"#fff8e1","Major":"#fff3e0","Critical":"#fce4ec"}
+    type_badge = {
+        "grammar": '<span style="background:#e3f2fd;color:#1565c0;padding:1px 7px;border-radius:4px;font-size:0.78rem;font-weight:600;white-space:nowrap;">ไวยากรณ์</span>',
+        "special": '<span style="background:#fce4ec;color:#880e4f;padding:1px 7px;border-radius:4px;font-size:0.78rem;font-weight:600;white-space:nowrap;">อักขระพิเศษ</span>',
+    }
+
     for i, p in enumerate(sg["punctuation"]):
-        c1, c2, c3, c4, c5 = st.columns([0.7,1.1,3,2,0.7])
+        c1, c2, c3, c4, c5, c6 = st.columns([0.7, 1.0, 1.4, 2.8, 2.0, 0.7])
         with c1:
-            p["enabled"] = st.toggle("", p.get("enabled",True), key=f"pen_{i}", label_visibility="collapsed")
+            p["enabled"] = st.toggle("", p.get("enabled", False), key=f"pen_{i}", label_visibility="collapsed")
         with c2:
             bg = sev_bg.get(p.get("severity","Minor"),"#fff8e1")
             st.markdown(f'<div style="padding-top:6px"><span style="font-family:monospace;background:{bg};padding:3px 10px;border-radius:5px;font-size:1rem;">{p["symbol"]}</span></div>', unsafe_allow_html=True)
         with c3:
-            st.markdown(f'<div style="padding-top:10px;font-size:0.93rem;color:#555;">{p["name"]}</div>', unsafe_allow_html=True)
+            ptype = p.get("type","special")
+            st.markdown(f'<div style="padding-top:9px">{type_badge.get(ptype,"")}</div>', unsafe_allow_html=True)
         with c4:
+            st.markdown(f'<div style="padding-top:10px;font-size:0.93rem;color:#444;">{p["name"]}</div>', unsafe_allow_html=True)
+        with c5:
             p["severity"] = st.selectbox("", ["Minor","Major","Critical"],
                 index=["Minor","Major","Critical"].index(p.get("severity","Minor")),
                 key=f"psev_{i}", label_visibility="collapsed")
-        with c5:
+        with c6:
             st.markdown('<div style="padding-top:4px">', unsafe_allow_html=True)
             if st.button("✕", key=f"pdel_{i}"):
                 sg["punctuation"].pop(i); st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
- 
+
     with st.expander("➕ เพิ่มเครื่องหมายหรือสัญลักษณ์ใหม่", expanded=False):
         st.caption("สามารถเพิ่มได้มากกว่า 1 สัญลักษณ์พร้อมกัน โดยคั่นด้วยช่องว่าง")
-        ns1, ns2, ns3 = st.columns([2,2,1.5])
+        ns1, ns2, ns3, ns4 = st.columns([2, 2, 1.5, 1.5])
         with ns1: new_syms = st.text_input("สัญลักษณ์", key="new_sym", placeholder="เช่น ※ · 〈 〉")
         with ns2: new_name = st.text_input("ชื่อ/คำอธิบาย", key="new_sym_name", placeholder="เช่น เครื่องหมายอ้างอิง")
-        with ns3: new_sev  = st.selectbox("ระดับ", ["Minor","Major","Critical"], key="new_sym_sev")
+        with ns3: new_ptype = st.selectbox("ประเภท", ["special","grammar"],
+            format_func=lambda x: "อักขระพิเศษ" if x=="special" else "ไวยากรณ์", key="new_sym_type")
+        with ns4: new_sev = st.selectbox("ระดับ", ["Minor","Major","Critical"], key="new_sym_sev")
         if st.button("เพิ่มสัญลักษณ์", key="add_sym"):
             syms = [s for s in new_syms.strip().split() if s]
             if syms:
                 for sym in syms:
-                    sg["punctuation"].append({"symbol":sym,"name":new_name or sym,"enabled":True,"severity":new_sev})
+                    sg["punctuation"].append({"symbol":sym,"name":new_name or sym,
+                        "type":new_ptype,"enabled":True,"severity":new_sev})
                 st.success(f"เพิ่ม {len(syms)} สัญลักษณ์เรียบร้อยแล้ว")
                 st.rerun()
             else:
                 st.warning("กรุณาใส่สัญลักษณ์ก่อน")
- 
+
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 4 — HISTORY
 # ════════════════════════════════════════════════════════════════════════════════
@@ -677,7 +709,7 @@ with tab_history:
                 "อัตราผ่าน": f"{c.get('Pass',0)/h['total']*100:.0f}%" if h["total"] else "—",
             })
         st.dataframe(pd.DataFrame(hist_rows), use_container_width=True, hide_index=True)
- 
+
         st.markdown('<div class="sec-title">รายละเอียดแต่ละครั้ง</div>', unsafe_allow_html=True)
         for j, h in enumerate(reversed(history)):
             with st.expander(f"📄 {h['filename']}  ·  {h['timestamp']}  ·  {h['total']} แถว"):
@@ -700,8 +732,7 @@ with tab_history:
                     df2.to_csv(index=False).encode("utf-8-sig"),
                     file_name=f"qa_{h['timestamp'].replace(':','').replace(' ','_')}.csv",
                     mime="text/csv", key=f"hdl_{j}")
- 
+
         st.write("")
         if st.button("🗑 ล้างประวัติทั้งหมด"):
             st.session_state["history"] = []; st.rerun()
- 
