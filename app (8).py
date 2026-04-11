@@ -17,7 +17,7 @@ st.markdown("""
 
 html, body, [class*="css"], .stApp {
     font-family: 'Sarabun', sans-serif !important;
-    background-color: #ffffff !important;
+    background-color: #f7f4ef !important;
     color: #1a1a1a !important;
 }
 .main .block-container {
@@ -228,9 +228,18 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
 
         if rules.get("glossary_check"):
             for g in glossary:
-                term, trans, imp = g.get("term",""), g.get("translation",""), g.get("importance","Major")
-                if term.lower() in src.lower() and trans and trans.lower() not in tgt.lower():
-                    issues.append({"rule":"Glossary","severity":imp,"detail":f"'{term}' ควรแปลว่า '{trans}'"})
+                term = g.get("term","").strip()
+                trans = g.get("translation","").strip()
+                imp = g.get("importance","Major")
+                if not term:
+                    continue
+                if term.lower() in src.lower():
+                    if not trans:
+                        issues.append({"rule":"Glossary","severity":"Minor",
+                            "detail":f"พบ '{term}' ใน source แต่ยังไม่ได้กำหนดคำแปลใน Glossary"})
+                    elif trans.lower() not in tgt.lower():
+                        issues.append({"rule":"Glossary","severity":imp,
+                            "detail":f"'{term}' ควรแปลว่า '{trans}' (ไม่พบในคำแปล)"})
 
         if rules.get("punctuation"):
             for p in style.get("punctuation",[]):
@@ -339,13 +348,24 @@ with tab_qa:
         rules["encoding_check"] = st.toggle("Encoding / Font",     rules["encoding_check"])
 
     st.write("")
+    # แสดงสถานะ glossary ก่อน run
+    g_count = len(st.session_state["glossary"])
+    if g_count > 0:
+        st.caption(f"📚 Glossary พร้อมใช้งาน: **{g_count} คำ** — จะนำมาตรวจสอบเมื่อเปิด toggle Glossary")
+    else:
+        st.caption("📚 Glossary: ยังว่างอยู่ — เพิ่มคำใน Tab Glossary ก่อนรัน")
+
     if st.button("▶  รันการตรวจสอบ QA", disabled=("df_raw" not in st.session_state)):
         with st.spinner("กำลังตรวจสอบ…"):
+            # snapshot ค่า rules และ glossary ณ ตอนที่กด run (ป้องกัน reference mutation)
+            rules_snapshot    = dict(st.session_state["qa_rules"])
+            glossary_snapshot = list(st.session_state["glossary"])
+            style_snapshot    = dict(st.session_state["style_guide"])
             results = run_qa(
                 st.session_state["df_raw"],
                 st.session_state["source_col"],
                 st.session_state["target_col"],
-                rules, st.session_state["glossary"], st.session_state["style_guide"],
+                rules_snapshot, glossary_snapshot, style_snapshot,
             )
             st.session_state["qa_results"] = results
             total, counts = calc_stats(results)
