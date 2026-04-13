@@ -173,6 +173,7 @@ def init_state():
             "placeholders": True, "glossary_check": True, "punctuation": True,
             "spelling_en": True,  "spelling_th": True,    "numbers": True,
             "extra_symbols": True,"length_check": True,   "encoding_check": True,
+            "consistency_check": True,
         },
         "qa_results": [], "current_file": None,
     }
@@ -226,10 +227,99 @@ def numbers_match(src_nums, tgt_nums):
 
 def run_qa(df, src_col, tgt_col, rules, glossary, style):
     results = []
+
+    # ── Pre-pass: Consistency Check ───────────────────────────────────────────
+    # สแกนทั้งไฟล์ก่อน เพื่อดูว่า term เดียวกันถูกแปลกี่รูปแบบ
+    consistency_map = {}   # term_lower → { term, imp, expected, rows_found: {trans_used: [row_nums]} }
+    if rules.get("glossary_check") and rules.get("consistency_check"):
+        for g in glossary:
+            if not g.get("enforce_consistency"):
+                continue
+            term = g.get("term","").strip()
+            if not term:
+                continue
+            imp      = g.get("importance","Major")
+            expected = g.get("translation","").strip()
+            rows_found = {}  # trans_used (str) → [row_nums]
+
+            for idx2, row2 in df.iterrows():
+                src2 = str(row2[src_col]) if pd.notna(row2[src_col]) else ""
+                tgt2 = str(row2[tgt_col]) if pd.notna(row2[tgt_col]) else ""
+                if term.lower() not in src2.lower():
+                    continue
+
+                if expected and expected.lower() in tgt2.lower():
+                    used = expected   # แปลถูก ใช้ expected เป็น key
+                elif not expected:
+                    # ไม่ได้กำหนด expected → ใช้ target ทั้งหมดเป็น key เพื่อตรวจว่าเหมือนกันไหม
+                    used = tgt2.strip()
+                else:
+                    used = f"__other__: {tgt2[:60]}"  # แปลต่างออกไป
+
+                rows_found.setdefault(used, []).append(idx2 + 1)
+
+            consistency_map[term.lower()] = {
+                "term": term, "imp": imp, "expected": expected,
+                "rows_found": rows_found,
+            }
+
+    # สร้าง lookup row_num → [issues] จาก consistency_map
+    consist_issues_by_row = {}
+    for term_lower, cdata in consistency_map.items():
+        rows_found = cdata["rows_found"]
+        term       = cdata["term"]
+        imp        = cdata["imp"]
+        expected   = cdata["expected"]
+
+        if not rows_found:
+            continue
+
+        unique_keys = list(rows_found.keys())
+
+        if expected:
+            # มี expected → ตรวจง่าย: แถวไหนไม่ใช้ expected → flagged
+            wrong_rows = []
+            for key, rnums in rows_found.items():
+                if key != expected:
+                    wrong_rows.extend(rnums)
+            correct_rows = rows_found.get(expected, [])
+            if wrong_rows:
+                for rnum in wrong_rows:
+                    consist_issues_by_row.setdefault(rnum, []).append({
+                        "rule": "Consistency",
+                        "severity": imp,
+                        "detail": (
+                            f"'{term}' ต้องแปลว่า '{expected}' เหมือนกันทุกแถว "
+                            f"(แถวที่ถูก: {correct_rows if correct_rows else 'ไม่มี'})"
+                        ),
+                    })
+        else:
+            # ไม่มี expected → ตรวจว่าแปลเหมือนกันทั้งหมดไหม
+            if len(unique_keys) > 1:
+                # หา majority (ใช้บ่อยสุด = "ถูก")
+                majority_key = max(unique_keys, key=lambda k: len(rows_found[k]))
+                summary = "; ".join(
+                    f'"{k[:40]}" (แถว {rows_found[k]})'
+                    for k in unique_keys if k != majority_key
+                )
+                for key, rnums in rows_found.items():
+                    if key == majority_key:
+                        continue
+                    for rnum in rnums:
+                        consist_issues_by_row.setdefault(rnum, []).append({
+                            "rule": "Consistency",
+                            "severity": imp,
+                            "detail": f"'{term}' ถูกแปลต่างกันในหลายแถว — แถวนี้ใช้: \"{key[:50]}\" ขณะที่แถวอื่นใช้: \"{majority_key[:50]}\"",
+                        })
+
     for idx, row in df.iterrows():
         src = str(row[src_col]) if pd.notna(row[src_col]) else ""
         tgt = str(row[tgt_col]) if pd.notna(row[tgt_col]) else ""
         issues = []
+
+        # เพิ่ม consistency issues ที่คำนวณไว้ล่วงหน้า
+        for ci in consist_issues_by_row.get(idx + 1, []):
+            issues.append(ci)
 
         # 1. Placeholder
         if rules.get("placeholders"):
@@ -399,22 +489,28 @@ with tab_qa:
     rules = st.session_state["qa_rules"]
     rc1, rc2, rc3 = st.columns(3)
     with rc1:
-        rules["placeholders"]   = st.toggle("ตรวจ Placeholder (ตัวแปร)",    rules["placeholders"])
-        rules["numbers"]        = st.toggle("ตรวจตัวเลขและข้อมูลเฉพาะ",      rules["numbers"])
-        rules["extra_symbols"]  = st.toggle("ตรวจสัญลักษณ์ที่เพิ่มขึ้น",     rules["extra_symbols"])
+        rules["placeholders"]       = st.toggle("ตรวจ Placeholder (ตัวแปร)",    rules["placeholders"])
+        rules["numbers"]            = st.toggle("ตรวจตัวเลขและข้อมูลเฉพาะ",      rules["numbers"])
+        rules["extra_symbols"]      = st.toggle("ตรวจสัญลักษณ์ที่เพิ่มขึ้น",     rules["extra_symbols"])
     with rc2:
-        rules["spelling_en"]    = st.toggle("ตรวจสะกดคำภาษาอังกฤษ",          rules["spelling_en"])
-        rules["spelling_th"]    = st.toggle("ตรวจสะกดคำภาษาไทย",             rules["spelling_th"])
-        rules["glossary_check"] = st.toggle("ตรวจตามรายการ Glossary",         rules["glossary_check"])
+        rules["spelling_en"]        = st.toggle("ตรวจสะกดคำภาษาอังกฤษ",          rules["spelling_en"])
+        rules["spelling_th"]        = st.toggle("ตรวจสะกดคำภาษาไทย",             rules["spelling_th"])
+        rules["glossary_check"]     = st.toggle("ตรวจตามรายการ Glossary",         rules["glossary_check"])
     with rc3:
-        rules["punctuation"]    = st.toggle("ตรวจเครื่องหมายวรรคตอน",        rules["punctuation"])
-        rules["length_check"]   = st.toggle("ตรวจความยาวของคำแปล",           rules["length_check"])
-        rules["encoding_check"] = st.toggle("ตรวจ Encoding และ Font",         rules["encoding_check"])
+        rules["punctuation"]        = st.toggle("ตรวจเครื่องหมายวรรคตอน",        rules["punctuation"])
+        rules["length_check"]       = st.toggle("ตรวจความยาวของคำแปล",           rules["length_check"])
+        rules["encoding_check"]     = st.toggle("ตรวจ Encoding และ Font",         rules["encoding_check"])
+    rules["consistency_check"]  = st.toggle(
+        "🔒 ตรวจความสม่ำเสมอของคำแปล (Consistency) — ตรวจว่าคำที่กำหนดใน Glossary ถูกแปลเหมือนกันทุกแถว",
+        rules.get("consistency_check", True)
+    )
 
     st.write("")
-    g_count = len(st.session_state["glossary"])
+    g_count      = len(st.session_state["glossary"])
+    g_consist_ct = sum(1 for g in st.session_state["glossary"] if g.get("enforce_consistency"))
     if g_count > 0:
-        st.caption(f"📚 Glossary พร้อมใช้งาน {g_count} คำ — จะนำมาตรวจเมื่อเปิดสวิตช์ 'ตรวจตามรายการ Glossary'")
+        consist_note = f" · 🔒 {g_consist_ct} คำบังคับ Consistency" if g_consist_ct else ""
+        st.caption(f"📚 Glossary พร้อมใช้งาน {g_count} คำ{consist_note} — เปิดสวิตช์ 'ตรวจตามรายการ Glossary' เพื่อเริ่มตรวจ")
     else:
         st.caption("📚 ยังไม่มี Glossary — ไปเพิ่มคำได้ที่แท็บ Glossary")
 
@@ -545,11 +641,18 @@ with tab_glossary:
     with gc: g_imp   = st.selectbox("ระดับความสำคัญ", ["Critical","Major","Minor"], key="g_imp")
     with gd: g_notes = st.text_input("หมายเหตุ / บริบท",  key="g_notes", placeholder="บริบทการใช้งาน")
 
+    g_consist = st.toggle(
+        "🔒 บังคับแปลเหมือนกันทุกแถว (Consistency Check) — หากคำนี้ปรากฏในหลายแถว ต้องแปลออกมาเป็นคำเดียวกันเสมอ",
+        value=False, key="g_consist"
+    )
+
     if st.button("เพิ่มลงใน Glossary"):
         if g_term.strip():
             st.session_state["glossary"].append({
-                "term":g_term.strip(),"translation":g_trans.strip(),
-                "importance":g_imp,"notes":g_notes.strip()})
+                "term": g_term.strip(), "translation": g_trans.strip(),
+                "importance": g_imp, "notes": g_notes.strip(),
+                "enforce_consistency": g_consist,
+            })
             st.success(f"เพิ่มคำ '{g_term}' เรียบร้อยแล้ว")
             st.rerun()
         else:
@@ -569,6 +672,7 @@ with tab_glossary:
                     "translation": str(row2.get("translation", row2.iloc[1] if len(row2)>1 else "")),
                     "importance":  str(row2.get("importance","Major")),
                     "notes":       str(row2.get("notes","")),
+                    "enforce_consistency": str(row2.get("enforce_consistency","False")).strip().lower() in ("true","1","yes","ใช่"),
                 }
                 if entry["term"] and entry["term"] != "nan":
                     st.session_state["glossary"].append(entry); added += 1
@@ -587,7 +691,8 @@ with tab_glossary:
         for i, g in enumerate(filtered_g):
             real_idx = st.session_state["glossary"].index(g)
             badge = imp_label.get(g["importance"], g["importance"])
-            with st.expander(f"{g['term']}  →  {g['translation']}  ({badge})", expanded=False):
+            lock  = "  🔒" if g.get("enforce_consistency") else ""
+            with st.expander(f"{g['term']}  →  {g['translation']}  ({badge}){lock}", expanded=False):
                 ec1, ec2 = st.columns([3,1])
                 with ec1:
                     nt  = st.text_input("คำต้นฉบับ", g["term"],        key=f"gt_{real_idx}")
@@ -595,8 +700,13 @@ with tab_glossary:
                     ni  = st.selectbox("ระดับความสำคัญ", ["Critical","Major","Minor"],
                         index=["Critical","Major","Minor"].index(g["importance"]), key=f"gi_{real_idx}")
                     nn  = st.text_input("หมายเหตุ", g["notes"], key=f"gn_{real_idx}")
+                    nc  = st.toggle("🔒 บังคับแปลเหมือนกันทุกแถว",
+                        value=g.get("enforce_consistency", False), key=f"gc_{real_idx}")
                     if st.button("💾 บันทึกการแก้ไข", key=f"gsv_{real_idx}"):
-                        st.session_state["glossary"][real_idx] = {"term":nt,"translation":ntr,"importance":ni,"notes":nn}
+                        st.session_state["glossary"][real_idx] = {
+                            "term":nt,"translation":ntr,"importance":ni,
+                            "notes":nn,"enforce_consistency":nc,
+                        }
                         st.success("บันทึกเรียบร้อย"); st.rerun()
                 with ec2:
                     st.write("")
