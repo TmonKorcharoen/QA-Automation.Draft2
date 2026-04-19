@@ -551,8 +551,9 @@ with tab_qa:
           transition: transform .12s, box-shadow .12s;
           position: relative;
         }}
-        .stat-box:hover {{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }}
-        .stat-box:hover .stat-hint {{ opacity:1; }}
+        .stat-box.no-click {{ cursor:default; }}
+        .stat-box:not(.no-click):hover {{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }}
+        .stat-box:not(.no-click):hover .stat-hint {{ opacity:1; }}
         .stat-hint {{
           position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
           font-size:9px; color:#aaa; opacity:0; transition:opacity .15s;
@@ -566,10 +567,18 @@ with tab_qa:
         .stat-major .s-num {{ color:#e64a19; }} .stat-major {{ border-color:#ffab91; }}
         .stat-crit  .s-num {{ color:#c62828; }} .stat-crit  {{ border-color:#ef9a9a; }}
 
-        /* Overlay */
+        /* Overlay — wrap ใน stats-row container */
+        .stats-wrapper {{ position: relative; }}
         .sev-overlay {{
-          display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35);
-          z-index:9998; align-items:center; justify-content:center;
+          display:none;
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.28);
+          z-index: 100;
+          border-radius: 12px;
+          align-items: center;
+          justify-content: center;
+          min-height: 100px;
         }}
         .sev-overlay.open {{ display:flex; }}
         .sev-popup {{
@@ -607,38 +616,102 @@ with tab_qa:
         }}
         </style>
 
-        <div class="stats-row">
-          <div class="stat-box stat-total" onclick="openPopup('total')">
-            <div class="s-num">{total}</div>
-            <div class="s-lbl">ทั้งหมด</div>
-            <div class="stat-hint">คลิกดูรายละเอียด</div>
-          </div>
-          <div class="stat-box stat-pass" onclick="openPopup('pass')">
-            <div class="s-num">{counts.get('Pass',0)}</div>
-            <div class="s-lbl">✅ ผ่าน</div>
-            <div class="stat-hint">คลิกดูรายละเอียด</div>
-          </div>
-          <div class="stat-box stat-minor" onclick="openPopup('minor')">
-            <div class="s-num">{counts.get('Minor',0)}</div>
-            <div class="s-lbl">🟡 Minor</div>
-            <div class="stat-hint">คลิกดูรายละเอียด</div>
-          </div>
-          <div class="stat-box stat-major" onclick="openPopup('major')">
-            <div class="s-num">{counts.get('Major',0)}</div>
-            <div class="s-lbl">🟠 Major</div>
-            <div class="stat-hint">คลิกดูรายละเอียด</div>
-          </div>
-          <div class="stat-box stat-crit" onclick="openPopup('crit')">
-            <div class="s-num">{counts.get('Critical',0)}</div>
-            <div class="s-lbl">🔴 Critical</div>
-            <div class="stat-hint">คลิกดูรายละเอียด</div>
-          </div>
-        </div>
+        <style>
+        .stats-wrapper {{ position: relative; }}
+        .stats-row {{ display:flex; gap:10px; margin:1.2rem 0 0 0; flex-wrap:wrap; }}
+        .stat-box {{
+          flex:1; min-width:90px; background:#fffdf8;
+          border:1.5px solid #e0d8cc; border-radius:10px;
+          padding:0.9rem 0.8rem; text-align:center;
+          user-select:none; transition: transform .12s, box-shadow .12s;
+          position: relative;
+        }}
+        .stat-box.clickable {{ cursor:pointer; }}
+        .stat-box.clickable:hover {{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }}
+        .stat-box.clickable:hover .stat-hint {{ opacity:1; }}
+        .stat-box.no-click {{ cursor:default; }}
+        .stat-hint {{
+          position:absolute; bottom:-5px; left:50%; transform:translateX(-50%);
+          font-size:9px; color:#aaa; opacity:0; transition:opacity .15s; white-space:nowrap;
+        }}
+        .s-num {{ font-size:2rem; font-weight:700; line-height:1; }}
+        .s-lbl {{ font-size:0.78rem; font-weight:600; color:#888; margin-top:4px; text-transform:uppercase; letter-spacing:0.05em; }}
+        .stat-total .s-num {{ color:#2e7d32; }}
+        .stat-pass  .s-num {{ color:#388e3c; }} .stat-pass  {{ border-color:#a5d6a7; }}
+        .stat-minor .s-num {{ color:#f57c00; }} .stat-minor {{ border-color:#ffcc80; }}
+        .stat-major .s-num {{ color:#e64a19; }} .stat-major {{ border-color:#ffab91; }}
+        .stat-crit  .s-num {{ color:#c62828; }} .stat-crit  {{ border-color:#ef9a9a; }}
 
-        <!-- Overlay + Popup -->
-        <div class="sev-overlay" id="sevOverlay" onclick="closePopup(event)">
-          <div class="sev-popup" id="sevPopup">
-            <button class="sev-popup-close" onclick="closePopupDirect()">✕</button>
+        .sev-popup-inline {{
+          display: none;
+          margin-top: 10px;
+          background: #fffdf8;
+          border-radius: 10px;
+          padding: 1.2rem 1.4rem;
+          border: 1.5px solid #e0d8cc;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+          position: relative;
+          animation: popIn .15s ease;
+        }}
+        .sev-popup-inline.open {{ display: block; }}
+        @keyframes popIn {{ from{{transform:translateY(-6px);opacity:0}} to{{transform:translateY(0);opacity:1}} }}
+        .sev-popup-close {{
+          position:absolute; top:10px; right:12px;
+          font-size:1rem; cursor:pointer; color:#aaa;
+          background:none; border:none; line-height:1; padding:2px 6px;
+        }}
+        .sev-popup-close:hover {{ color:#555; }}
+        .sev-popup-title {{
+          font-size:1.1rem; font-weight:700; margin:0 0 2px;
+          display:flex; align-items:center; gap:8px;
+        }}
+        .sev-popup-sub {{
+          font-size:0.78rem; font-weight:600; letter-spacing:.06em;
+          text-transform:uppercase; margin:0 0 0.8rem; opacity:.65;
+        }}
+        .sev-popup-desc {{ font-size:0.92rem; color:#333; line-height:1.65; margin:0 0 0.8rem; }}
+        .sev-popup-q {{
+          font-size:0.86rem; background:#f5f0e8; border-radius:7px;
+          padding:.55rem .9rem; color:#555; border-left:3px solid #ccc; margin:0 0 0.8rem;
+        }}
+        .sev-popup-q strong {{ color:#333; }}
+        .sev-tags {{ display:flex; flex-wrap:wrap; gap:6px; }}
+        .sev-tag {{
+          font-size:0.76rem; padding:3px 10px; border-radius:20px; border:1px solid transparent;
+        }}
+        </style>
+
+        <div class="stats-wrapper">
+          <div class="stats-row">
+            <div class="stat-box stat-total no-click">
+              <div class="s-num">{total}</div>
+              <div class="s-lbl">ทั้งหมด</div>
+            </div>
+            <div class="stat-box stat-pass clickable" onclick="openPopup('pass')">
+              <div class="s-num">{counts.get('Pass',0)}</div>
+              <div class="s-lbl">✅ ผ่าน</div>
+              <div class="stat-hint">คลิกดูรายละเอียด</div>
+            </div>
+            <div class="stat-box stat-minor clickable" onclick="openPopup('minor')">
+              <div class="s-num">{counts.get('Minor',0)}</div>
+              <div class="s-lbl">🟡 Minor</div>
+              <div class="stat-hint">คลิกดูรายละเอียด</div>
+            </div>
+            <div class="stat-box stat-major clickable" onclick="openPopup('major')">
+              <div class="s-num">{counts.get('Major',0)}</div>
+              <div class="s-lbl">🟠 Major</div>
+              <div class="stat-hint">คลิกดูรายละเอียด</div>
+            </div>
+            <div class="stat-box stat-crit clickable" onclick="openPopup('crit')">
+              <div class="s-num">{counts.get('Critical',0)}</div>
+              <div class="s-lbl">🔴 Critical</div>
+              <div class="stat-hint">คลิกดูรายละเอียด</div>
+            </div>
+          </div>
+
+          <!-- Inline popup แสดงใต้ stats bar -->
+          <div class="sev-popup-inline" id="sevPopup">
+            <button class="sev-popup-close" onclick="closePopup()">✕</button>
             <div class="sev-popup-title" id="popTitle"></div>
             <div class="sev-popup-sub"  id="popSub"></div>
             <div class="sev-popup-desc" id="popDesc"></div>
@@ -649,15 +722,6 @@ with tab_qa:
 
         <script>
         var popups = {{
-          total: {{
-            title: "📊 ภาพรวมทั้งหมด",
-            sub: "สรุปผลการตรวจสอบ",
-            color: "#2e7d32",
-            desc: "จำนวนแถวทั้งหมดที่ผ่านการตรวจสอบ QA ในครั้งนี้ ครอบคลุมทุกระดับความรุนแรง ตั้งแต่ Pass จนถึง Critical",
-            q: "ดูสัดส่วน Pass rate จาก progress bar ด้านล่าง",
-            tags: [],
-            tagColor: "#e8f5e9", tagText: "#1b5e20", tagBorder: "#a5d6a7"
-          }},
           pass: {{
             title: "✅ Pass — ผ่านแล้ว",
             sub: "ไม่พบข้อผิดพลาด",
@@ -695,8 +759,10 @@ with tab_qa:
             tagColor: "#fce4ec", tagText: "#880e4f", tagBorder: "#ef9a9a"
           }}
         }};
-
+        var currentOpen = null;
         function openPopup(key) {{
+          if (currentOpen === key) {{ closePopup(); return; }}
+          currentOpen = key;
           var d = popups[key];
           document.getElementById('popTitle').innerHTML = d.title;
           document.getElementById('popTitle').style.color = d.color;
@@ -710,16 +776,17 @@ with tab_qa:
             tagsHtml += '<span class="sev-tag" style="background:' + d.tagColor + ';color:' + d.tagText + ';border-color:' + d.tagBorder + '">' + t + '</span>';
           }});
           document.getElementById('popTags').innerHTML = tagsHtml;
-          document.getElementById('sevOverlay').classList.add('open');
+          var el = document.getElementById('sevPopup');
+          el.classList.remove('open');
+          void el.offsetWidth;
+          el.classList.add('open');
         }}
-        function closePopup(e) {{
-          if (e.target === document.getElementById('sevOverlay')) closePopupDirect();
-        }}
-        function closePopupDirect() {{
-          document.getElementById('sevOverlay').classList.remove('open');
+        function closePopup() {{
+          currentOpen = null;
+          document.getElementById('sevPopup').classList.remove('open');
         }}
         document.addEventListener('keydown', function(e) {{
-          if (e.key === 'Escape') closePopupDirect();
+          if (e.key === 'Escape') closePopup();
         }});
         </script>
         """, unsafe_allow_html=True)
