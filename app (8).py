@@ -541,14 +541,189 @@ with tab_qa:
         total, counts = calc_stats(results)
 
         st.markdown(f"""
+        <style>
+        .stats-row {{ display:flex; gap:10px; margin:1.2rem 0; flex-wrap:wrap; position:relative; }}
+        .stat-box {{
+          flex:1; min-width:90px; background:#fffdf8;
+          border:1.5px solid #e0d8cc; border-radius:10px;
+          padding:0.9rem 0.8rem; text-align:center;
+          cursor:pointer; user-select:none;
+          transition: transform .12s, box-shadow .12s;
+          position: relative;
+        }}
+        .stat-box:hover {{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }}
+        .stat-box:hover .stat-hint {{ opacity:1; }}
+        .stat-hint {{
+          position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+          font-size:9px; color:#aaa; opacity:0; transition:opacity .15s;
+          white-space:nowrap;
+        }}
+        .s-num {{ font-size:2rem; font-weight:700; line-height:1; }}
+        .s-lbl {{ font-size:0.78rem; font-weight:600; color:#888; margin-top:4px; text-transform:uppercase; letter-spacing:0.05em; }}
+        .stat-total .s-num {{ color:#2e7d32; }}
+        .stat-pass  .s-num {{ color:#388e3c; }} .stat-pass  {{ border-color:#a5d6a7; }}
+        .stat-minor .s-num {{ color:#f57c00; }} .stat-minor {{ border-color:#ffcc80; }}
+        .stat-major .s-num {{ color:#e64a19; }} .stat-major {{ border-color:#ffab91; }}
+        .stat-crit  .s-num {{ color:#c62828; }} .stat-crit  {{ border-color:#ef9a9a; }}
+
+        /* Overlay */
+        .sev-overlay {{
+          display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35);
+          z-index:9998; align-items:center; justify-content:center;
+        }}
+        .sev-overlay.open {{ display:flex; }}
+        .sev-popup {{
+          background:#fffdf8; border-radius:14px; padding:1.6rem 1.8rem;
+          max-width:420px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.18);
+          position:relative; border:1.5px solid #e0d8cc;
+          animation: popIn .15s ease;
+        }}
+        @keyframes popIn {{ from{{transform:scale(.94);opacity:0}} to{{transform:scale(1);opacity:1}} }}
+        .sev-popup-close {{
+          position:absolute; top:12px; right:14px;
+          font-size:1.1rem; cursor:pointer; color:#aaa; background:none; border:none;
+          line-height:1;
+        }}
+        .sev-popup-close:hover {{ color:#555; }}
+        .sev-popup-title {{
+          font-size:1.15rem; font-weight:700; margin:0 0 4px;
+          display:flex; align-items:center; gap:8px;
+        }}
+        .sev-popup-sub {{
+          font-size:0.82rem; font-weight:600; letter-spacing:.05em;
+          text-transform:uppercase; margin:0 0 1rem; opacity:.6;
+        }}
+        .sev-popup-desc {{ font-size:0.95rem; color:#333; line-height:1.65; margin:0 0 1rem; }}
+        .sev-popup-q {{
+          font-size:0.88rem; background:#f5f0e8; border-radius:8px;
+          padding:.6rem .9rem; color:#555; border-left:3px solid #ccc;
+          margin:0 0 1rem;
+        }}
+        .sev-popup-q strong {{ color:#333; }}
+        .sev-tags {{ display:flex; flex-wrap:wrap; gap:6px; }}
+        .sev-tag {{
+          font-size:0.78rem; padding:3px 10px; border-radius:20px;
+          border:1px solid transparent;
+        }}
+        </style>
+
         <div class="stats-row">
-          <div class="stat-box stat-total"><div class="s-num">{total}</div><div class="s-lbl">ทั้งหมด</div></div>
-          <div class="stat-box stat-pass" ><div class="s-num">{counts.get('Pass',0)}</div><div class="s-lbl">✅ ผ่าน</div></div>
-          <div class="stat-box stat-minor"><div class="s-num">{counts.get('Minor',0)}</div><div class="s-lbl">🟡 Minor</div></div>
-          <div class="stat-box stat-major"><div class="s-num">{counts.get('Major',0)}</div><div class="s-lbl">🟠 Major</div></div>
-          <div class="stat-box stat-crit" ><div class="s-num">{counts.get('Critical',0)}</div><div class="s-lbl">🔴 Critical</div></div>
+          <div class="stat-box stat-total" onclick="openPopup('total')">
+            <div class="s-num">{total}</div>
+            <div class="s-lbl">ทั้งหมด</div>
+            <div class="stat-hint">คลิกดูรายละเอียด</div>
+          </div>
+          <div class="stat-box stat-pass" onclick="openPopup('pass')">
+            <div class="s-num">{counts.get('Pass',0)}</div>
+            <div class="s-lbl">✅ ผ่าน</div>
+            <div class="stat-hint">คลิกดูรายละเอียด</div>
+          </div>
+          <div class="stat-box stat-minor" onclick="openPopup('minor')">
+            <div class="s-num">{counts.get('Minor',0)}</div>
+            <div class="s-lbl">🟡 Minor</div>
+            <div class="stat-hint">คลิกดูรายละเอียด</div>
+          </div>
+          <div class="stat-box stat-major" onclick="openPopup('major')">
+            <div class="s-num">{counts.get('Major',0)}</div>
+            <div class="s-lbl">🟠 Major</div>
+            <div class="stat-hint">คลิกดูรายละเอียด</div>
+          </div>
+          <div class="stat-box stat-crit" onclick="openPopup('crit')">
+            <div class="s-num">{counts.get('Critical',0)}</div>
+            <div class="s-lbl">🔴 Critical</div>
+            <div class="stat-hint">คลิกดูรายละเอียด</div>
+          </div>
         </div>
+
+        <!-- Overlay + Popup -->
+        <div class="sev-overlay" id="sevOverlay" onclick="closePopup(event)">
+          <div class="sev-popup" id="sevPopup">
+            <button class="sev-popup-close" onclick="closePopupDirect()">✕</button>
+            <div class="sev-popup-title" id="popTitle"></div>
+            <div class="sev-popup-sub"  id="popSub"></div>
+            <div class="sev-popup-desc" id="popDesc"></div>
+            <div class="sev-popup-q"    id="popQ"></div>
+            <div class="sev-tags"       id="popTags"></div>
+          </div>
+        </div>
+
+        <script>
+        var popups = {{
+          total: {{
+            title: "📊 ภาพรวมทั้งหมด",
+            sub: "สรุปผลการตรวจสอบ",
+            color: "#2e7d32",
+            desc: "จำนวนแถวทั้งหมดที่ผ่านการตรวจสอบ QA ในครั้งนี้ ครอบคลุมทุกระดับความรุนแรง ตั้งแต่ Pass จนถึง Critical",
+            q: "ดูสัดส่วน Pass rate จาก progress bar ด้านล่าง",
+            tags: [],
+            tagColor: "#e8f5e9", tagText: "#1b5e20", tagBorder: "#a5d6a7"
+          }},
+          pass: {{
+            title: "✅ Pass — ผ่านแล้ว",
+            sub: "ไม่พบข้อผิดพลาด",
+            color: "#388e3c",
+            desc: "แถวที่ไม่พบข้อผิดพลาดใดๆ หรือมีข้อผิดพลาดเล็กน้อยมากจนยอมรับได้ตามเกณฑ์โปรเจกต์ที่กำหนด",
+            q: "\"ยอมรับได้ตามเกณฑ์โปรเจกต์?\"",
+            tags: ["ความหมายถูกต้อง", "ภาษาเป็นธรรมชาติ", "Glossary ตรงกัน"],
+            tagColor: "#e8f5e9", tagText: "#1b5e20", tagBorder: "#a5d6a7"
+          }},
+          minor: {{
+            title: "🟡 Minor — ข้อผิดพลาดเล็กน้อย",
+            sub: "แก้ได้ในรอบถัดไป",
+            color: "#f57c00",
+            desc: "ความหมายยังถูกต้อง แต่คุณภาพภาษาไม่ดีพอ อาจดูไม่ professional หรือไม่สอดคล้องกับ style guide ของโปรเจกต์",
+            q: "\"ความหมายถูก แต่ดูไม่ professional?\"",
+            tags: ["สะกดผิด (typo)", "เครื่องหมายไม่สอดคล้อง", "ความยาวผิดสัดส่วน", "Inconsistency เล็กน้อย"],
+            tagColor: "#fff8e1", tagText: "#e65100", tagBorder: "#ffcc80"
+          }},
+          major: {{
+            title: "🟠 Major — ข้อผิดพลาดสำคัญ",
+            sub: "ต้องแก้ก่อน publish",
+            color: "#e64a19",
+            desc: "ความหมายเปลี่ยนไปบางส่วน ผู้อ่านอาจเข้าใจผิดได้ แต่ยังไม่ถึงขั้นก่อความเสียหายร้ายแรง ต้องแก้ไขก่อนส่งงาน",
+            q: "\"ผู้อ่านจะเข้าใจผิดไหม?\"",
+            tags: ["Glossary ผิด (สำคัญ)", "ละเว้น clause สำคัญ", "โครงสร้างประโยคผิด", "ตัวเลขไม่ตรง"],
+            tagColor: "#fff3e0", tagText: "#bf360c", tagBorder: "#ffab91"
+          }},
+          crit: {{
+            title: "🔴 Critical — ข้อผิดพลาดร้ายแรง",
+            sub: "ห้ามปล่อยผ่านเด็ดขาด",
+            color: "#c62828",
+            desc: "ข้อผิดพลาดที่ส่งผลกระทบร้ายแรง ความหมายเปลี่ยนไปจนตรงข้าม ข้อมูลสำคัญหาย หรืออาจก่อให้เกิดความเสียหายในเชิงกฎหมาย/ความปลอดภัย",
+            q: "\"ถ้าปล่อยผ่าน จะเกิดความเสียหายไหม?\"",
+            tags: ["ตัวแปรหาย {{DAMAGE}}", "ความหมายตรงข้าม", "ไม่ได้แปล", "ตัวเลขสำคัญหาย"],
+            tagColor: "#fce4ec", tagText: "#880e4f", tagBorder: "#ef9a9a"
+          }}
+        }};
+
+        function openPopup(key) {{
+          var d = popups[key];
+          document.getElementById('popTitle').innerHTML = d.title;
+          document.getElementById('popTitle').style.color = d.color;
+          document.getElementById('popSub').textContent  = d.sub;
+          document.getElementById('popSub').style.color  = d.color;
+          document.getElementById('popDesc').textContent = d.desc;
+          document.getElementById('popQ').innerHTML = '<strong>ถามตัวเองว่า:</strong> ' + d.q;
+          document.getElementById('popQ').style.borderColor = d.color;
+          var tagsHtml = '';
+          d.tags.forEach(function(t) {{
+            tagsHtml += '<span class="sev-tag" style="background:' + d.tagColor + ';color:' + d.tagText + ';border-color:' + d.tagBorder + '">' + t + '</span>';
+          }});
+          document.getElementById('popTags').innerHTML = tagsHtml;
+          document.getElementById('sevOverlay').classList.add('open');
+        }}
+        function closePopup(e) {{
+          if (e.target === document.getElementById('sevOverlay')) closePopupDirect();
+        }}
+        function closePopupDirect() {{
+          document.getElementById('sevOverlay').classList.remove('open');
+        }}
+        document.addEventListener('keydown', function(e) {{
+          if (e.key === 'Escape') closePopupDirect();
+        }});
+        </script>
         """, unsafe_allow_html=True)
+
 
         pass_pct = counts.get("Pass",0) / total if total else 0
         st.progress(pass_pct, text=f"อัตราผ่าน: {pass_pct*100:.1f}%")
