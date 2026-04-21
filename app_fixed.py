@@ -175,6 +175,20 @@ def init_state():
             "spelling_en": True,  "spelling_th": True,    "numbers": True,
             "extra_symbols": True,"length_check": True,   "encoding_check": True,
             "consistency_check": True,
+            "double_space": True,       # ตรวจเคาะวรรคซ้ำ
+            "en_final_period": True,    # ตรวจจุดท้ายประโยค EN
+        },
+        # MQM penalty weights (penalty points per error per 1,000 words)
+        "mqm_weights": {
+            "Minor": 1,
+            "Major": 5,
+            "Critical": 25,
+        },
+        "mqm_threshold": {
+            "excellent": 90,   # ≥ 90 = Excellent
+            "good":      75,   # ≥ 75 = Good
+            "acceptable": 60,  # ≥ 60 = Acceptable
+            # < 60 = Rejected
         },
         "qa_results": [], "current_file": None,
     }
@@ -332,13 +346,17 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
                 issues.append({"rule":"Placeholder","severity":"Major",
                     "detail":f"มีตัวแปร {m} เกินมาในคำแปล"})
 
-        # 2. ตัวเลข (รองรับ พ.ศ./ค.ศ.)
+        # 2. ตัวเลข (รองรับ พ.ศ./ค.ศ.) — ตรวจทั้งหาย และเกินมา
         if rules.get("numbers"):
             src_nums = NUM_PAT.findall(src)
             tgt_nums = NUM_PAT.findall(tgt)
             for n in numbers_match(src_nums, tgt_nums):
                 issues.append({"rule":"ตัวเลข","severity":"Critical",
-                    "detail":f"ตัวเลข หายไป: {n}"})
+                    "detail":f"ตัวเลขหายไปจากคำแปล: {n}"})
+            # ตรวจตัวเลขที่เกินมาใน target
+            for n in numbers_match(tgt_nums, src_nums):
+                issues.append({"rule":"ตัวเลข","severity":"Major",
+                    "detail":f"มีตัวเลขเพิ่มมาในคำแปล: {n}"})
 
         # 3. สัญลักษณ์เกิน / หาย
         if rules.get("extra_symbols"):
@@ -384,18 +402,15 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
                         issues.append({"rule":"Glossary","severity":imp,
                             "detail":f"'{term}' ควรแปลว่า '{trans}' แต่ไม่พบในคำแปล"})
 
-        # 7. เครื่องหมายวรรคตอน
+        # 7. เครื่องหมายวรรคตอน (ตรวจทุกรายการที่กำหนดใน Style Guide)
         if rules.get("punctuation"):
             tgt_is_thai = bool(TH_PAT.search(tgt))
             for p in style.get("punctuation",[]):
-                if not p.get("enabled"):
-                    continue
-                sym  = p["symbol"]
-                sev  = p.get("severity","Minor")
-                ptype = p.get("type","special")  # "grammar" | "special"
+                sym   = p["symbol"]
+                sev   = p.get("severity","Minor")
+                ptype = p.get("type","special")
 
                 # เครื่องหมายไวยากรณ์ (. , ! ? : ; -) → ถ้า target เป็นภาษาไทย ข้ามได้
-                # เพราะภาษาไทยไม่มีกฎบังคับใช้เครื่องหมายเหล่านี้
                 if ptype == "grammar" and tgt_is_thai:
                     continue
 
@@ -421,6 +436,29 @@ def run_qa(df, src_col, tgt_col, rules, glossary, style):
                 issues.append({"rule":"Encoding","severity":"Major",
                     "detail":f"คำแปลมีตัวอักษรที่ไม่รองรับใน {style.get('encoding','UTF-8')}"})
 
+        # 10. เคาะวรรคซ้ำ (double/multiple spaces) — ตรวจทั้ง source และ target
+        if rules.get("double_space"):
+            if re.search(r'  +', src):
+                issues.append({"rule":"Whitespace","severity":"Minor",
+                    "detail":"ต้นฉบับมีการเคาะวรรคซ้ำ (double space)"})
+            if re.search(r'  +', tgt):
+                issues.append({"rule":"Whitespace","severity":"Minor",
+                    "detail":"คำแปลมีการเคาะวรรคซ้ำ (double space)"})
+
+        # 11. จุดท้ายประโยค EN — ถ้า target เป็นภาษาอังกฤษ ควรจบด้วย . หรือ ? หรือ !
+        if rules.get("en_final_period"):
+            tgt_stripped = tgt.rstrip()
+            tgt_is_thai = bool(TH_PAT.search(tgt))
+            src_is_thai  = bool(TH_PAT.search(src))
+            # ตรวจเฉพาะกรณี target เป็นภาษาอังกฤษ (ไม่มีอักษรไทย)
+            if not tgt_is_thai and tgt_stripped:
+                # source จบด้วย . หรือ ? หรือ !
+                src_ends_punct = bool(re.search(r'[.?!]$', src.rstrip()))
+                tgt_ends_punct = bool(re.search(r'[.?!]$', tgt_stripped))
+                if src_ends_punct and not tgt_ends_punct:
+                    issues.append({"rule":"Full Stop EN","severity":"Minor",
+                        "detail":"ต้นฉบับจบด้วยเครื่องหมาย แต่คำแปล EN ไม่มีเครื่องหมายปิดประโยค (. ? !)"})
+
         sevs = [i["severity"] for i in issues]
         status = "Critical" if "Critical" in sevs else "Major" if "Major" in sevs else "Minor" if sevs else "Pass"
         results.append({"row":idx+1,"source":src,"target":tgt,"status":status,"issues":issues})
@@ -431,13 +469,77 @@ def calc_stats(results):
     for r in results: counts[r["status"]] = counts.get(r["status"],0) + 1
     return len(results), counts
 
-def build_export_df(results):
+# ── MQM Scoring ──────────────────────────────────────────────────────────────────
+def count_words(text):
+    """นับคำแบบ rough: split whitespace รองรับทั้ง EN และ TH (TH นับตัวอักษร/5)"""
+    en_words = len(re.findall(r'[a-zA-Z0-9]+', text))
+    th_chars  = len(re.findall(r'[\u0e00-\u0e7f]', text))
+    return en_words + max(1, th_chars // 5)
+
+def calc_mqm(results, weights, thresholds):
+    """
+    คำนวณ MQM score ตามสูตรมาตรฐาน:
+      penalty = Σ (error_count × weight) / total_words × 1000
+      score   = max(0, 100 − penalty)
+    คืนค่า: score (float), grade (str), penalty_detail (dict)
+    """
+    total_words = max(1, sum(count_words(r["source"]) for r in results))
+    penalty_counts = {"Minor": 0, "Major": 0, "Critical": 0}
+    for r in results:
+        for iss in r.get("issues", []):
+            sev = iss.get("severity", "Minor")
+            if sev in penalty_counts:
+                penalty_counts[sev] += 1
+
+    raw_penalty = sum(penalty_counts[s] * weights.get(s, 0) for s in penalty_counts)
+    penalty_per_1k = raw_penalty / total_words * 1000
+    score = max(0.0, 100.0 - penalty_per_1k)
+
+    if score >= thresholds.get("excellent", 90):
+        grade = "Excellent"
+    elif score >= thresholds.get("good", 75):
+        grade = "Good"
+    elif score >= thresholds.get("acceptable", 60):
+        grade = "Acceptable"
+    else:
+        grade = "Rejected"
+
+    return score, grade, penalty_counts, total_words, penalty_per_1k
+
+MQM_GRADE_COLOR = {
+    "Excellent": "#2e7d32",
+    "Good":      "#558b2f",
+    "Acceptable":"#f57c00",
+    "Rejected":  "#c62828",
+}
+MQM_GRADE_BG = {
+    "Excellent": "#e8f5e9",
+    "Good":      "#f1f8e9",
+    "Acceptable":"#fff8e1",
+    "Rejected":  "#fce4ec",
+}
+MQM_GRADE_TH = {
+    "Excellent": "ดีเยี่ยม",
+    "Good":      "ดี",
+    "Acceptable":"พอใช้ได้",
+    "Rejected":  "ไม่ผ่าน",
+}
+
+def build_export_df(results, weights=None):
+    w = weights or {"Minor":1,"Major":5,"Critical":25}
     rows = []
     for r in results:
-        for iss in (r["issues"] if r["issues"] else [{"rule":"—","severity":"Pass","detail":"ไม่พบปัญหา"}]):
-            rows.append({"#":r["row"],"Source":r["source"],"Target":r["target"],
-                "Status":r["status"],"Rule":iss.get("rule","—"),
-                "ระดับ":iss.get("severity","Pass"),"รายละเอียด":iss.get("detail","")})
+        issues = r["issues"] if r["issues"] else [{"rule":"—","severity":"Pass","detail":"ไม่พบปัญหา"}]
+        row_penalty = sum(w.get(iss.get("severity","Minor"), 0) for iss in r["issues"]) if r["issues"] else 0
+        for iss in issues:
+            rows.append({
+                "#": r["row"], "Source": r["source"], "Target": r["target"],
+                "Status": r["status"],
+                "Rule": iss.get("rule","—"),
+                "ระดับ": iss.get("severity","Pass"),
+                "รายละเอียด": iss.get("detail",""),
+                "MQM Penalty (แถว)": row_penalty,
+            })
     return pd.DataFrame(rows)
 
 # ── Header ───────────────────────────────────────────────────────────────────────
@@ -527,6 +629,8 @@ with tab_qa:
         rules["punctuation"]        = st.toggle("ตรวจเครื่องหมายวรรคตอน",        rules["punctuation"])
         rules["length_check"]       = st.toggle("ตรวจความยาวของคำแปล",           rules["length_check"])
         rules["encoding_check"]     = st.toggle("ตรวจ Encoding และ Font",         rules["encoding_check"])
+        rules["double_space"]       = st.toggle("ตรวจการเคาะวรรคซ้ำ",            rules.get("double_space", True))
+        rules["en_final_period"]    = st.toggle("ตรวจจุดท้ายประโยค (EN)",        rules.get("en_final_period", True))
     rules["consistency_check"]  = st.toggle(
         "🔒 ตรวจความสม่ำเสมอของคำแปล (Consistency) — ตรวจว่าคำที่กำหนดใน Glossary ถูกแปลเหมือนกันทุกแถว",
         rules.get("consistency_check", True)
@@ -555,6 +659,9 @@ with tab_qa:
             )
             st.session_state["qa_results"] = results
             total, counts = calc_stats(results)
+            mqm_w_snap  = dict(st.session_state.get("mqm_weights", {"Minor":1,"Major":5,"Critical":25}))
+            mqm_th_snap = dict(st.session_state.get("mqm_threshold", {"excellent":90,"good":75,"acceptable":60}))
+            mqm_score_h, mqm_grade_h, _, _, _ = calc_mqm(results, mqm_w_snap, mqm_th_snap)
             # ป้องกัน history ซ้ำ: ตรวจว่า session เดิมมีแล้วหรือยัง
             ts_now = datetime.now().strftime("%Y-%m-%d %H:%M")
             fname_now = st.session_state.get("current_file","—")
@@ -567,6 +674,7 @@ with tab_qa:
                     "timestamp": ts_now,
                     "filename":  fname_now,
                     "total": total, "counts": counts, "results": results,
+                    "mqm_score": mqm_score_h, "mqm_grade": mqm_grade_h,
                 })
         st.success(f"ตรวจสอบเสร็จแล้ว พบ {total} แถว")
 
@@ -723,6 +831,90 @@ document.addEventListener('keydown', function(e) {{ if(e.key==='Escape') close_(
         pass_pct = counts.get("Pass",0) / total if total else 0
         st.progress(pass_pct, text=f"อัตราผ่าน: {pass_pct*100:.1f}%")
 
+        # ── MQM Score ────────────────────────────────────────────────────────────
+        mqm_w  = st.session_state.get("mqm_weights", {"Minor":1,"Major":5,"Critical":25})
+        mqm_th = st.session_state.get("mqm_threshold", {"excellent":90,"good":75,"acceptable":60})
+        mqm_score, mqm_grade, mqm_penalty_counts, mqm_words, mqm_penalty_per1k = calc_mqm(results, mqm_w, mqm_th)
+        gc = MQM_GRADE_COLOR[mqm_grade]
+        gb = MQM_GRADE_BG[mqm_grade]
+        gth = MQM_GRADE_TH[mqm_grade]
+
+        # gauge bar fill
+        gauge_pct = mqm_score / 100
+        gauge_color = gc
+
+        components.html(f"""
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  body {{ margin:0; padding:0; font-family:'Sarabun',sans-serif; background:transparent; }}
+  .mqm-wrap {{ display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; margin:1rem 0; }}
+  .mqm-score-box {{
+    background:{gb}; border:2px solid {gc}; border-radius:14px;
+    padding:1.2rem 2rem; min-width:180px; text-align:center; flex-shrink:0;
+  }}
+  .mqm-num {{ font-size:3.2rem; font-weight:800; color:{gc}; line-height:1; }}
+  .mqm-label {{ font-size:0.78rem; font-weight:700; color:{gc}; text-transform:uppercase;
+    letter-spacing:.07em; margin-top:4px; }}
+  .mqm-grade {{ font-size:1.1rem; font-weight:700; color:{gc}; margin-top:6px; }}
+  .mqm-detail {{
+    flex:1; background:#fffdf8; border:1.5px solid #e0d8cc; border-radius:14px;
+    padding:1.1rem 1.4rem; min-width:260px;
+  }}
+  .mqm-detail-title {{ font-size:0.85rem; font-weight:700; color:#555;
+    text-transform:uppercase; letter-spacing:.05em; margin-bottom:0.7rem; }}
+  .mqm-row {{ display:flex; justify-content:space-between; align-items:center;
+    padding:0.28rem 0; border-bottom:1px solid #f0ece4; font-size:0.93rem; }}
+  .mqm-row:last-child {{ border-bottom:none; }}
+  .mqm-row-label {{ color:#444; }}
+  .mqm-row-val {{ font-weight:600; }}
+  .gauge-wrap {{ margin-top:10px; }}
+  .gauge-bg {{ background:#e0d8cc; border-radius:6px; height:10px; overflow:hidden; }}
+  .gauge-fill {{ height:10px; border-radius:6px; background:{gauge_color};
+    width:{gauge_pct*100:.1f}%; transition:width .4s ease; }}
+  .gauge-labels {{ display:flex; justify-content:space-between;
+    font-size:0.72rem; color:#aaa; margin-top:3px; }}
+  .mqm-formula {{ font-size:0.78rem; color:#999; margin-top:0.6rem; line-height:1.5; }}
+</style></head><body>
+<div class="mqm-wrap">
+  <div class="mqm-score-box">
+    <div class="mqm-num">{mqm_score:.1f}</div>
+    <div class="mqm-label">MQM Score</div>
+    <div class="mqm-grade">{'⭐' if mqm_grade=='Excellent' else '✅' if mqm_grade=='Good' else '⚠️' if mqm_grade=='Acceptable' else '❌'} {gth}</div>
+    <div class="gauge-wrap">
+      <div class="gauge-bg"><div class="gauge-fill"></div></div>
+      <div class="gauge-labels"><span>0</span><span>50</span><span>100</span></div>
+    </div>
+  </div>
+  <div class="mqm-detail">
+    <div class="mqm-detail-title">รายละเอียดคะแนน MQM</div>
+    <div class="mqm-row">
+      <span class="mqm-row-label">🟡 Minor errors × {mqm_w.get('Minor',1)} pts</span>
+      <span class="mqm-row-val" style="color:#f57c00">{mqm_penalty_counts['Minor']} × {mqm_w.get('Minor',1)} = {mqm_penalty_counts['Minor']*mqm_w.get('Minor',1)} pts</span>
+    </div>
+    <div class="mqm-row">
+      <span class="mqm-row-label">🟠 Major errors × {mqm_w.get('Major',5)} pts</span>
+      <span class="mqm-row-val" style="color:#e64a19">{mqm_penalty_counts['Major']} × {mqm_w.get('Major',5)} = {mqm_penalty_counts['Major']*mqm_w.get('Major',5)} pts</span>
+    </div>
+    <div class="mqm-row">
+      <span class="mqm-row-label">🔴 Critical errors × {mqm_w.get('Critical',25)} pts</span>
+      <span class="mqm-row-val" style="color:#c62828">{mqm_penalty_counts['Critical']} × {mqm_w.get('Critical',25)} = {mqm_penalty_counts['Critical']*mqm_w.get('Critical',25)} pts</span>
+    </div>
+    <div class="mqm-row">
+      <span class="mqm-row-label">จำนวนคำโดยประมาณ</span>
+      <span class="mqm-row-val">{mqm_words:,} คำ</span>
+    </div>
+    <div class="mqm-row">
+      <span class="mqm-row-label">Penalty per 1,000 words</span>
+      <span class="mqm-row-val">{mqm_penalty_per1k:.2f} pts</span>
+    </div>
+    <div class="mqm-formula">
+      สูตร: Score = 100 − (penalty ÷ จำนวนคำ × 1,000)<br>
+      เกณฑ์: Excellent ≥ {mqm_th.get('excellent',90)} · Good ≥ {mqm_th.get('good',75)} · Acceptable ≥ {mqm_th.get('acceptable',60)} · ต่ำกว่า = Rejected
+    </div>
+  </div>
+</div>
+</body></html>""", height=210, scrolling=False)
+
         st.markdown('<div class="sec-title">กรองตามระดับความรุนแรง</div>', unsafe_allow_html=True)
         filter_sev = st.multiselect(
             "ระดับ", ["Critical","Major","Minor","Pass"],
@@ -731,7 +923,7 @@ document.addEventListener('keydown', function(e) {{ if(e.key==='Escape') close_(
         )
 
         # Export
-        exp_df = build_export_df(results)
+        exp_df = build_export_df(results, st.session_state.get("mqm_weights"))
         ec1, ec2, _ = st.columns([1.2, 1.2, 4])
         with ec1:
             buf = io.BytesIO()
@@ -939,12 +1131,60 @@ with tab_style:
             if min_r >= max_r:
                 st.warning("⚠️ ค่าต่ำสุดต้องน้อยกว่าค่าสูงสุด")
 
+    # ── MQM Settings ──────────────────────────────────────────────────────────
+    st.markdown('<div class="sec-title">🎯 ตั้งค่าคะแนน MQM</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;color:#1b5e20;line-height:1.6;">
+    <strong>💡 MQM (Multidimensional Quality Metrics)</strong><br>
+    มาตรฐานวัดคุณภาพงานแปลที่ใช้ในอุตสาหกรรม — คะแนนคำนวณจาก:<br>
+    <code>Score = 100 − (Σ penalty) ÷ จำนวนคำ × 1,000</code><br>
+    สามารถปรับ penalty weight และเกณฑ์การตัดสินได้ตามมาตรฐานโปรเจกต์
+    </div>
+    """, unsafe_allow_html=True)
+
+    mw = st.session_state.get("mqm_weights", {"Minor":1,"Major":5,"Critical":25})
+    mt = st.session_state.get("mqm_threshold", {"excellent":90,"good":75,"acceptable":60})
+
+    mq1, mq2 = st.columns(2)
+    with mq1:
+        st.markdown("**⚖️ Penalty Weights (คะแนนหักต่อ error)**")
+        mw_minor = st.number_input("🟡 Minor — penalty (pts)", min_value=0, max_value=50,
+            value=int(mw.get("Minor",1)), step=1, key="mq_minor")
+        mw_major = st.number_input("🟠 Major — penalty (pts)", min_value=0, max_value=100,
+            value=int(mw.get("Major",5)), step=1, key="mq_major")
+        mw_crit  = st.number_input("🔴 Critical — penalty (pts)", min_value=0, max_value=200,
+            value=int(mw.get("Critical",25)), step=1, key="mq_crit")
+        st.session_state["mqm_weights"] = {"Minor": mw_minor, "Major": mw_major, "Critical": mw_crit}
+
+    with mq2:
+        st.markdown("**📊 เกณฑ์ระดับคุณภาพ (Grade Thresholds)**")
+        mt_excel = st.number_input("⭐ Excellent — คะแนนขั้นต่ำ", min_value=50, max_value=100,
+            value=int(mt.get("excellent",90)), step=1, key="mq_excellent")
+        mt_good  = st.number_input("✅ Good — คะแนนขั้นต่ำ", min_value=30, max_value=99,
+            value=int(mt.get("good",75)), step=1, key="mq_good")
+        mt_acc   = st.number_input("⚠️ Acceptable — คะแนนขั้นต่ำ", min_value=0, max_value=98,
+            value=int(mt.get("acceptable",60)), step=1, key="mq_acceptable")
+        st.session_state["mqm_threshold"] = {
+            "excellent": mt_excel, "good": mt_good, "acceptable": mt_acc
+        }
+        if not (mt_excel > mt_good > mt_acc):
+            st.warning("⚠️ เกณฑ์ต้องเรียงจากมากไปน้อย: Excellent > Good > Acceptable")
+
+        # preview
+        st.markdown(f"""
+        <div style="margin-top:0.6rem;font-size:0.85rem;line-height:2;">
+        ⭐ Excellent: ≥ {mt_excel} &nbsp;·&nbsp;
+        ✅ Good: ≥ {mt_good} &nbsp;·&nbsp;
+        ⚠️ Acceptable: ≥ {mt_acc} &nbsp;·&nbsp;
+        ❌ Rejected: &lt; {mt_acc}
+        </div>""", unsafe_allow_html=True)
+
     st.markdown('<div class="sec-title">✍️ กฎเครื่องหมายวรรคตอน</div>', unsafe_allow_html=True)
     st.markdown("""
     <div style="background:#edf5ed;border:1px solid #c8e6c9;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;color:#2e7d32;line-height:1.6;">
     <strong>💡 ประเภทเครื่องหมาย</strong><br>
     <span style="background:#e3f2fd;color:#1565c0;padding:1px 7px;border-radius:4px;font-size:0.82rem;font-weight:600;">ไวยากรณ์</span>
-    &nbsp;เครื่องหมายที่เป็นส่วนหนึ่งของไวยากรณ์ภาษาอังกฤษ เช่น <code>. , ! ?</code> — ภาษาไทยไม่ต้องใช้ <strong>ปิดไว้ by default</strong><br>
+    &nbsp;เครื่องหมายที่เป็นส่วนหนึ่งของไวยากรณ์ภาษาอังกฤษ เช่น <code>. , ! ?</code> — <strong>ข้ามอัตโนมัติถ้า target เป็นภาษาไทย</strong><br>
     <span style="background:#fce4ec;color:#880e4f;padding:1px 7px;border-radius:4px;font-size:0.82rem;font-weight:600;">อักขระพิเศษ</span>
     &nbsp;สัญลักษณ์ที่ต้องคงไว้ในคำแปล เช่น <code>... — "</code> — <strong>ตรวจเสมอไม่ว่า target จะเป็นภาษาใด</strong>
     </div>
@@ -957,11 +1197,7 @@ with tab_style:
     }
 
     for i, p in enumerate(sg["punctuation"]):
-        c1, c2, c3, c4, c5, c6 = st.columns([0.7, 1.0, 1.4, 2.8, 2.0, 0.7])
-        with c1:
-            enabled_val = st.toggle("", value=p.get("enabled", False),
-                key=f"pen_{i}", label_visibility="collapsed")
-            st.session_state["style_guide"]["punctuation"][i]["enabled"] = enabled_val
+        c2, c3, c4, c5, c6 = st.columns([1.0, 1.4, 3.5, 2.0, 0.7])
         with c2:
             bg = sev_bg.get(p.get("severity","Minor"),"#fff8e1")
             st.markdown(f'<div style="padding-top:6px"><span style="font-family:monospace;background:{bg};padding:3px 10px;border-radius:5px;font-size:1rem;">{p["symbol"]}</span></div>', unsafe_allow_html=True)
@@ -1011,17 +1247,24 @@ with tab_history:
         hist_rows = []
         for h in reversed(history):
             c = h["counts"]
+            mqm_s = h.get("mqm_score")
+            mqm_g = h.get("mqm_grade","—")
+            mqm_display = f"{mqm_s:.1f} ({MQM_GRADE_TH.get(mqm_g, mqm_g)})" if mqm_s is not None else "—"
             hist_rows.append({
                 "เวลา": h["timestamp"], "ชื่อไฟล์": h["filename"], "จำนวนแถว": h["total"],
                 "✅ ผ่าน": c.get("Pass",0), "🟡 Minor": c.get("Minor",0),
                 "🟠 Major": c.get("Major",0), "🔴 Critical": c.get("Critical",0),
                 "อัตราผ่าน": f"{c.get('Pass',0)/h['total']*100:.0f}%" if h["total"] else "—",
+                "🎯 MQM Score": mqm_display,
             })
         st.dataframe(pd.DataFrame(hist_rows), use_container_width=True, hide_index=True)
 
         st.markdown('<div class="sec-title">รายละเอียดแต่ละครั้ง</div>', unsafe_allow_html=True)
         for j, h in enumerate(reversed(history)):
-            with st.expander(f"📄 {h['filename']}  ·  {h['timestamp']}  ·  {h['total']} แถว"):
+            mqm_s = h.get("mqm_score")
+            mqm_g = h.get("mqm_grade","—")
+            mqm_label = f"  ·  🎯 MQM {mqm_s:.1f} ({MQM_GRADE_TH.get(mqm_g,mqm_g)})" if mqm_s is not None else ""
+            with st.expander(f"📄 {h['filename']}  ·  {h['timestamp']}  ·  {h['total']} แถว{mqm_label}"):
                 c = h["counts"]
                 st.markdown(f"""
                 <div class="stats-row">
