@@ -864,20 +864,41 @@ with tab_style:
     sg = st.session_state["style_guide"]
     st.markdown('<div class="sec-title">🔧 ตั้งค่าโปรเจกต์</div>', unsafe_allow_html=True)
     sc1, sc2, sc3 = st.columns(3)
+
+    enc_opts  = ["UTF-8","UTF-16","TIS-620","ISO-8859-1","Windows-1252"]
+    tone_opts = ["Formal","Semi-Formal","Casual","Technical","Legal"]
+
     with sc1:
-        sg["encoding"] = st.selectbox("Encoding ที่ใช้",
-            ["UTF-8","UTF-16","TIS-620","ISO-8859-1","Windows-1252"],
-            index=["UTF-8","UTF-16","TIS-620","ISO-8859-1","Windows-1252"].index(sg.get("encoding","UTF-8")))
-        sg["font"] = st.text_input("ชื่อ Font (ถ้ากำหนด)", sg.get("font",""), placeholder="เช่น Sarabun, TH Sarabun New")
+        enc_val = st.selectbox("Encoding ที่ใช้", enc_opts,
+            index=enc_opts.index(sg.get("encoding","UTF-8")), key="sg_encoding")
+        sg["encoding"] = enc_val
+
+        font_val = st.text_input("ชื่อ Font (ถ้ากำหนด)", value=sg.get("font",""),
+            placeholder="เช่น Sarabun, TH Sarabun New", key="sg_font")
+        sg["font"] = font_val
+
     with sc2:
-        sg["tone"] = st.selectbox("ระดับภาษา (Tone)", ["Formal","Semi-Formal","Casual","Technical","Legal"],
-            index=["Formal","Semi-Formal","Casual","Technical","Legal"].index(sg.get("tone","Formal")))
-        sg["check_encoding"] = st.toggle("เปิดใช้การตรวจ Encoding", sg.get("check_encoding",True))
+        tone_val = st.selectbox("ระดับภาษา (Tone)", tone_opts,
+            index=tone_opts.index(sg.get("tone","Formal")), key="sg_tone")
+        sg["tone"] = tone_val
+
+        enc_chk = st.toggle("เปิดใช้การตรวจ Encoding", value=sg.get("check_encoding",True),
+            key="sg_check_encoding")
+        sg["check_encoding"] = enc_chk
+
     with sc3:
-        sg["check_length"] = st.toggle("เปิดใช้การตรวจความยาว", sg.get("check_length",True))
-        if sg["check_length"]:
-            sg["max_length_ratio"] = st.number_input("คำแปลยาวได้สูงสุด (×)", 0.5, 5.0, float(sg.get("max_length_ratio",1.5)), 0.1)
-            sg["min_length_ratio"] = st.number_input("คำแปลสั้นได้ต่ำสุด (×)", 0.1, 2.0, float(sg.get("min_length_ratio",0.5)), 0.1)
+        len_chk = st.toggle("เปิดใช้การตรวจความยาว", value=sg.get("check_length",True),
+            key="sg_check_length")
+        sg["check_length"] = len_chk
+
+        if len_chk:
+            max_r = st.number_input("คำแปลยาวได้สูงสุด (×)", 0.5, 5.0,
+                value=float(sg.get("max_length_ratio",1.5)), step=0.1, key="sg_max_ratio")
+            sg["max_length_ratio"] = max_r
+
+            min_r = st.number_input("คำแปลสั้นได้ต่ำสุด (×)", 0.1, 2.0,
+                value=float(sg.get("min_length_ratio",0.5)), step=0.1, key="sg_min_ratio")
+            sg["min_length_ratio"] = min_r
 
     st.markdown('<div class="sec-title">✍️ กฎเครื่องหมายวรรคตอน</div>', unsafe_allow_html=True)
     st.markdown("""
@@ -899,7 +920,9 @@ with tab_style:
     for i, p in enumerate(sg["punctuation"]):
         c1, c2, c3, c4, c5, c6 = st.columns([0.7, 1.0, 1.4, 2.8, 2.0, 0.7])
         with c1:
-            p["enabled"] = st.toggle("", p.get("enabled", False), key=f"pen_{i}", label_visibility="collapsed")
+            enabled_val = st.toggle("", value=p.get("enabled", False),
+                key=f"pen_{i}", label_visibility="collapsed")
+            st.session_state["style_guide"]["punctuation"][i]["enabled"] = enabled_val
         with c2:
             bg = sev_bg.get(p.get("severity","Minor"),"#fff8e1")
             st.markdown(f'<div style="padding-top:6px"><span style="font-family:monospace;background:{bg};padding:3px 10px;border-radius:5px;font-size:1rem;">{p["symbol"]}</span></div>', unsafe_allow_html=True)
@@ -909,13 +932,14 @@ with tab_style:
         with c4:
             st.markdown(f'<div style="padding-top:10px;font-size:0.93rem;color:#444;">{p["name"]}</div>', unsafe_allow_html=True)
         with c5:
-            p["severity"] = st.selectbox("", ["Minor","Major","Critical"],
+            sev_val = st.selectbox("", ["Minor","Major","Critical"],
                 index=["Minor","Major","Critical"].index(p.get("severity","Minor")),
                 key=f"psev_{i}", label_visibility="collapsed")
+            st.session_state["style_guide"]["punctuation"][i]["severity"] = sev_val
         with c6:
             st.markdown('<div style="padding-top:4px">', unsafe_allow_html=True)
             if st.button("✕", key=f"pdel_{i}"):
-                sg["punctuation"].pop(i); st.rerun()
+                st.session_state["style_guide"]["punctuation"].pop(i); st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("➕ เพิ่มเครื่องหมายหรือสัญลักษณ์ใหม่", expanded=False):
