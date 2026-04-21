@@ -14,134 +14,440 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
 
+/* ═══════════════════════════════════════════
+   ROOT TOKENS
+═══════════════════════════════════════════ */
+:root {
+    --bg:        #F7F5F0;
+    --bg-card:   #FFFFFF;
+    --bg-subtle: #F2EFE9;
+    --border:    #E4DDD3;
+    --border-med:#C8BFB2;
+    --text-1:    #1C1917;
+    --text-2:    #57534E;
+    --text-3:    #A8A29E;
+    --accent:    #16A34A;
+    --accent-dk: #15803D;
+    --accent-lt: #DCFCE7;
+    --accent-mid:#BBF7D0;
+
+    --pass:   #16A34A;  --pass-bg:  #F0FDF4;  --pass-bd:  #BBF7D0;
+    --minor:  #D97706;  --minor-bg: #FFFBEB;  --minor-bd: #FDE68A;
+    --major:  #EA580C;  --major-bg: #FFF7ED;  --major-bd: #FDBA74;
+    --crit:   #DC2626;  --crit-bg:  #FEF2F2;  --crit-bd:  #FECACA;
+
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:    0 4px 12px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
 html, body, [class*="css"], .stApp {
-    font-family: 'Sarabun', sans-serif !important;
-    background-color: #f5f0e8 !important;
-    color: #1a1a1a !important;
+    font-family: 'IBM Plex Sans Thai', 'DM Sans', sans-serif !important;
+    background-color: var(--bg) !important;
+    color: var(--text-1) !important;
+    -webkit-font-smoothing: antialiased;
 }
 .main .block-container {
-    padding: 0 2.5rem 3rem 2.5rem !important;
-    max-width: 1300px !important;
+    padding: 0 2rem 4rem 2rem !important;
+    max-width: 1340px !important;
 }
 
-/* Wide Header */
+/* ═══════════════════════════════════════════
+   HEADER — full-bleed, refined
+═══════════════════════════════════════════ */
 .app-header {
-    background: linear-gradient(90deg, #2e7d32 0%, #43a047 100%);
-    color: white;
-    padding: 1.6rem 2.5rem;
-    margin: 0 -2.5rem 2rem -2.5rem;
+    background: var(--text-1);
+    color: #fff;
+    padding: 1.5rem 2.5rem 1.4rem;
+    margin: 0 -2rem 2.2rem -2rem;
     display: flex;
     align-items: center;
-    gap: 1.2rem;
+    gap: 1.4rem;
+    border-bottom: 3px solid var(--accent);
+    position: relative;
+    overflow: hidden;
 }
-.app-header-icon  { font-size: 2rem; }
-.app-header-title { font-size: 1.7rem; font-weight: 700; margin: 0; }
-.app-header-sub   { font-size: 0.95rem; margin: 0; opacity: 0.85; font-weight: 400; }
-
-/* Section title */
-.sec-title {
-    font-size: 1.05rem; font-weight: 600; color: #2e7d32;
-    margin: 1.4rem 0 0.8rem 0; padding-bottom: 0.4rem;
-    border-bottom: 1px solid #ddd;
+.app-header::after {
+    content: 'TQS';
+    position: absolute; right: 2rem; top: 50%;
+    transform: translateY(-50%);
+    font-size: 5rem; font-weight: 700; letter-spacing: -0.05em;
+    color: rgba(255,255,255,.04);
+    font-family: 'DM Sans', sans-serif;
+    pointer-events: none; user-select: none;
 }
-
-/* File badge */
-.file-info {
-    background: #edf5ed; border: 1px solid #c8e6c9; border-radius: 8px;
-    padding: 0.5rem 1rem; font-size: 0.92rem; color: #2e7d32;
-    display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
+.app-header-badge {
+    background: var(--accent);
+    color: #fff;
+    width: 2.8rem; height: 2.8rem; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(22,163,74,.4);
 }
-
-/* Stats row */
-.stats-row { display: flex; gap: 12px; margin: 1.2rem 0; flex-wrap: wrap; }
-.stat-box  {
-    flex: 1; min-width: 90px; background: #fffdf8;
-    border: 1.5px solid #e0d8cc; border-radius: 10px;
-    padding: 0.9rem 0.8rem; text-align: center;
+.app-header-title {
+    font-size: 1.45rem; font-weight: 700; margin: 0; letter-spacing: -0.02em;
+    line-height: 1.1;
 }
-.stat-box .s-num { font-size: 2rem; font-weight: 700; line-height: 1; }
-.stat-box .s-lbl { font-size: 0.78rem; font-weight: 600; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-.stat-total .s-num { color: #2e7d32; }
-.stat-pass  .s-num { color: #388e3c; } .stat-pass  { border-color: #a5d6a7; }
-.stat-minor .s-num { color: #f57c00; } .stat-minor { border-color: #ffcc80; }
-.stat-major .s-num { color: #e64a19; } .stat-major { border-color: #ffab91; }
-.stat-crit  .s-num { color: #c62828; } .stat-crit  { border-color: #ef9a9a; }
-
-/* QA Table */
-.qa-table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; font-size: 0.97rem; }
-.qa-table thead tr { border-bottom: 2px solid #ccc; }
-.qa-table thead th {
-    padding: 0.6rem 1rem 0.6rem 0; font-weight: 600;
-    color: #333; text-align: left; font-size: 0.92rem;
-    background: transparent;
+.app-header-sub {
+    font-size: 0.82rem; margin: 0.2rem 0 0; opacity: 0.55; font-weight: 400;
+    letter-spacing: 0.02em;
 }
-.qa-table tbody tr { border-bottom: 1px solid #e8e0d5; }
-.qa-table tbody tr:hover { background: #ede8df; }
-.qa-table td { padding: 0.9rem 1rem 0.9rem 0; vertical-align: top; color: #222; line-height: 1.6; }
-.td-num    { font-weight: 700; color: #555; width: 42px; white-space: nowrap; }
-.td-text   { min-width: 200px; max-width: 280px; word-break: break-word; }
-.td-rule   { color: #555; white-space: nowrap; }
-.sev-cell  { white-space: nowrap; font-weight: 600; font-size: 1rem; }
-.sev-pass  { color: #388e3c; }
-.sev-minor { color: #f57c00; }
-.sev-major { color: #e64a19; }
-.sev-crit  { color: #c62828; }
-.td-detail { color: #444; font-size: 0.9rem; min-width: 160px; }
-
-/* Buttons */
-.stButton > button {
-    background: #2e7d32 !important; color: white !important;
-    border: none !important; border-radius: 7px !important;
-    font-size: 0.95rem !important; font-weight: 500 !important;
-    padding: 0.45rem 1.3rem !important;
-    font-family: 'Sarabun', sans-serif !important;
-}
-.stButton > button:hover { background: #1b5e20 !important; }
-
-/* Inputs */
-.stTextInput > div > div > input,
-.stTextArea  > div > div > textarea,
-.stSelectbox > div > div {
-    border-color: #ccc !important; border-radius: 7px !important;
-    font-size: 0.95rem !important; font-family: 'Sarabun', sans-serif !important;
-    background: #fffdf8 !important;
-}
-.stTextInput > div > div > input:focus,
-.stTextArea  > div > div > textarea:focus {
-    border-color: #43a047 !important;
-    box-shadow: 0 0 0 2px rgba(67,160,71,0.15) !important;
+.app-header-ver {
+    margin-left: auto; margin-right: 5rem;
+    font-size: 0.7rem; font-family: 'IBM Plex Mono', monospace;
+    color: rgba(255,255,255,.3); letter-spacing: .06em;
 }
 
-/* Tabs */
+/* ═══════════════════════════════════════════
+   TABS — clean underline style
+═══════════════════════════════════════════ */
 .stTabs [data-baseweb="tab-list"] {
-    border-bottom: 2px solid #ccc !important;
-    background: transparent !important; gap: 0 !important; padding: 0 !important;
+    border-bottom: 1.5px solid var(--border) !important;
+    background: transparent !important;
+    gap: 0 !important; padding: 0 !important;
+    margin-bottom: 1.6rem;
 }
 .stTabs [data-baseweb="tab"] {
-    font-size: 1rem !important; font-weight: 500 !important; color: #777 !important;
-    padding: 0.65rem 1.5rem !important; border-radius: 0 !important;
-    background: transparent !important; border-bottom: 3px solid transparent !important;
+    font-size: 0.9rem !important; font-weight: 500 !important;
+    color: var(--text-3) !important;
+    padding: 0.7rem 1.4rem !important;
+    border-radius: 0 !important; background: transparent !important;
+    border-bottom: 2.5px solid transparent !important;
+    transition: color .15s, border-color .15s;
+    letter-spacing: .01em;
 }
+.stTabs [data-baseweb="tab"]:hover { color: var(--text-2) !important; }
 .stTabs [aria-selected="true"] {
-    color: #2e7d32 !important; border-bottom: 3px solid #2e7d32 !important;
+    color: var(--accent-dk) !important;
+    border-bottom: 2.5px solid var(--accent) !important;
     background: transparent !important;
+    font-weight: 600 !important;
 }
 .stTabs [data-baseweb="tab-highlight"],
 .stTabs [data-baseweb="tab-border"] { display: none !important; }
 
-/* Expander */
-div[data-testid="stExpander"] {
-    border: 1px solid #ddd !important; border-radius: 8px !important;
-    background: #fffdf8 !important;
+/* ═══════════════════════════════════════════
+   SECTION TITLES
+═══════════════════════════════════════════ */
+.sec-title {
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase; letter-spacing: .1em;
+    margin: 1.8rem 0 1rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.5rem;
 }
 
-/* Dataframe */
-.stDataFrame { border-radius: 8px; overflow: hidden; }
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+}
+.card-sm {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    box-shadow: var(--shadow-sm);
+}
 
-/* Caption / info */
-.stAlert { border-radius: 8px !important; }
+/* ═══════════════════════════════════════════
+   FILE BADGE
+═══════════════════════════════════════════ */
+.file-info {
+    background: var(--accent-lt); border: 1px solid var(--accent-mid);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.9rem; font-size: 0.85rem; color: var(--accent-dk);
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-weight: 500; margin-bottom: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════
+   STAT BOXES (inline Streamlit use)
+═══════════════════════════════════════════ */
+.stats-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat-box {
+    flex: 1; min-width: 88px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 0.8rem; text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s, box-shadow .15s;
+}
+.stat-box.clickable { cursor: pointer; }
+.stat-box.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+.s-num { font-size: 2.1rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+.s-lbl { font-size: 0.68rem; font-weight: 600; color: var(--text-3); margin-top: 5px;
+    text-transform: uppercase; letter-spacing: .08em; }
+
+.stat-total .s-num { color: var(--text-1); }
+.stat-pass  { border-color: var(--pass-bd);  } .stat-pass  .s-num { color: var(--pass);  }
+.stat-minor { border-color: var(--minor-bd); } .stat-minor .s-num { color: var(--minor); }
+.stat-major { border-color: var(--major-bd); } .stat-major .s-num { color: var(--major); }
+.stat-crit  { border-color: var(--crit-bd);  } .stat-crit  .s-num { color: var(--crit);  }
+
+/* ═══════════════════════════════════════════
+   QA TABLE — clean, airy
+═══════════════════════════════════════════ */
+.qa-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.88rem; margin-top: 1rem;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+}
+.qa-table thead tr {
+    background: var(--bg-subtle);
+    border-bottom: 1.5px solid var(--border-med);
+}
+.qa-table thead th {
+    padding: 0.75rem 1rem; font-weight: 600;
+    color: var(--text-2); text-align: left;
+    font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: .07em; white-space: nowrap;
+}
+.qa-table tbody tr { border-bottom: 1px solid var(--border); }
+.qa-table tbody tr:last-child { border-bottom: none; }
+.qa-table tbody tr:hover { background: var(--bg-subtle); }
+.qa-table td {
+    padding: 0.85rem 1rem; vertical-align: top;
+    color: var(--text-1); line-height: 1.65;
+}
+.td-num  { font-weight: 600; color: var(--text-3); width: 40px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+.td-text { min-width: 180px; max-width: 260px; word-break: break-word;
+    font-size: 0.86rem; color: var(--text-2); }
+.td-rule { white-space: nowrap; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem; color: var(--text-3);
+    background: var(--bg-subtle); padding: 2px 8px;
+    border-radius: 4px; display: inline-block; }
+.sev-cell { white-space: nowrap; }
+.sev-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.75rem; font-weight: 600; padding: 3px 9px;
+    border-radius: 20px; border: 1px solid;
+}
+.sev-pass  .sev-badge { background: var(--pass-bg);  color: var(--pass);  border-color: var(--pass-bd);  }
+.sev-minor .sev-badge { background: var(--minor-bg); color: var(--minor); border-color: var(--minor-bd); }
+.sev-major .sev-badge { background: var(--major-bg); color: var(--major); border-color: var(--major-bd); }
+.sev-crit  .sev-badge { background: var(--crit-bg);  color: var(--crit);  border-color: var(--crit-bd);  }
+.td-detail { color: var(--text-2); font-size: 0.84rem; min-width: 150px; }
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.stButton > button {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.88rem !important; font-weight: 600 !important;
+    padding: 0.5rem 1.4rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+    letter-spacing: .01em !important;
+    transition: background .15s, transform .1s, box-shadow .15s !important;
+    box-shadow: 0 1px 3px rgba(22,163,74,.25) !important;
+}
+.stButton > button:hover {
+    background: var(--accent-dk) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 3px 8px rgba(22,163,74,.3) !important;
+}
+.stButton > button:active { transform: translateY(0) !important; }
+
+/* ═══════════════════════════════════════════
+   INPUTS / SELECT
+═══════════════════════════════════════════ */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stNumberInput > div > div > input {
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.9rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+    background: var(--bg-card) !important;
+    color: var(--text-1) !important;
+    padding: 0.45rem 0.75rem !important;
+    transition: border-color .15s, box-shadow .15s !important;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(22,163,74,.12) !important;
+    outline: none !important;
+}
+.stSelectbox > div > div {
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    background: var(--bg-card) !important;
+    font-size: 0.9rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+}
+
+/* Labels */
+.stTextInput label, .stSelectbox label, .stTextArea label,
+.stNumberInput label, .stMultiSelect label, .stFileUploader label {
+    font-size: 0.78rem !important; font-weight: 600 !important;
+    color: var(--text-2) !important; text-transform: uppercase !important;
+    letter-spacing: .06em !important; margin-bottom: 4px !important;
+}
+
+/* ═══════════════════════════════════════════
+   TOGGLE
+═══════════════════════════════════════════ */
+.stToggle > label {
+    font-size: 0.88rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+    color: var(--text-1) !important;
+    font-weight: 400 !important;
+}
+[data-testid="stToggle"] [role="switch"][aria-checked="true"] {
+    background-color: var(--accent) !important;
+}
+
+/* ═══════════════════════════════════════════
+   EXPANDER
+═══════════════════════════════════════════ */
+div[data-testid="stExpander"] {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    background: var(--bg-card) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: 0.5rem !important;
+    overflow: hidden !important;
+}
+div[data-testid="stExpander"] > div:first-child {
+    padding: 0.75rem 1rem !important;
+    background: var(--bg-subtle) !important;
+}
+div[data-testid="stExpander"] summary {
+    font-weight: 500 !important; font-size: 0.92rem !important;
+    color: var(--text-1) !important;
+}
+
+/* ═══════════════════════════════════════════
+   MULTISELECT
+═══════════════════════════════════════════ */
+.stMultiSelect [data-baseweb="tag"] {
+    background-color: var(--accent-lt) !important;
+    color: var(--accent-dk) !important;
+    border: 1px solid var(--accent-mid) !important;
+    border-radius: 4px !important; font-size: 0.82rem !important;
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════ */
+.stProgress > div > div > div > div {
+    background: var(--accent) !important;
+    border-radius: 4px !important;
+}
+.stProgress > div > div > div {
+    background: var(--border) !important;
+    border-radius: 4px !important;
+    height: 6px !important;
+}
+
+/* ═══════════════════════════════════════════
+   ALERTS / INFO
+═══════════════════════════════════════════ */
+.stAlert {
+    border-radius: var(--radius) !important;
+    font-size: 0.88rem !important;
+    border-left-width: 3px !important;
+}
+.stSuccess { border-color: var(--accent) !important; }
+
+/* ═══════════════════════════════════════════
+   DATAFRAME
+═══════════════════════════════════════════ */
+.stDataFrame {
+    border-radius: var(--radius) !important;
+    overflow: hidden !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* ═══════════════════════════════════════════
+   CAPTION / SMALL TEXT
+═══════════════════════════════════════════ */
+.stCaption, [data-testid="stCaptionContainer"] {
+    color: var(--text-3) !important; font-size: 0.8rem !important;
+}
+
+/* ═══════════════════════════════════════════
+   FILE UPLOADER
+═══════════════════════════════════════════ */
+[data-testid="stFileUploader"] > div {
+    background: var(--bg-card) !important;
+    border: 2px dashed var(--border-med) !important;
+    border-radius: var(--radius) !important;
+    transition: border-color .2s !important;
+}
+[data-testid="stFileUploader"] > div:hover {
+    border-color: var(--accent) !important;
+}
+
+/* ═══════════════════════════════════════════
+   POPUP (stats widget)
+═══════════════════════════════════════════ */
+.popup {
+    display: none; margin-top: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.3rem;
+    box-shadow: var(--shadow);
+    position: relative;
+    animation: popIn .15s ease;
+}
+.popup.open { display: block; }
+@keyframes popIn {
+    from { transform: translateY(-6px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+.mono { font-family: 'IBM Plex Mono', monospace; }
+.hint-text { font-size: 0.78rem; color: var(--text-3); }
+code {
+    font-family: 'IBM Plex Mono', monospace !important;
+    background: var(--bg-subtle) !important;
+    padding: 1px 5px !important; border-radius: 3px !important;
+    font-size: 0.85em !important; color: var(--accent-dk) !important;
+}
+
+/* ═══════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -545,11 +851,12 @@ def build_export_df(results, weights=None):
 # ── Header ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="app-header">
-  <div class="app-header-icon">🔍</div>
+  <div class="app-header-badge">🔍</div>
   <div>
     <div class="app-header-title">TransQA Studio</div>
-    <div class="app-header-sub">ระบบตรวจสอบคุณภาพงานแปล · Translation Quality Assurance</div>
+    <div class="app-header-sub">Translation Quality Assurance · ระบบตรวจสอบคุณภาพงานแปล</div>
   </div>
+  <div class="app-header-ver">v2.0</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -684,148 +991,135 @@ with tab_qa:
         total, counts = calc_stats(results)
 
         components.html(f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
+<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
-  body {{ margin:0; padding:0; font-family:'Sarabun',sans-serif; background:transparent; }}
-  .stats-row {{ display:flex; gap:10px; flex-wrap:wrap; }}
-  .stat-box {{
-    flex:1; min-width:90px; background:#fffdf8;
-    border:1.5px solid #e0d8cc; border-radius:10px;
-    padding:0.9rem 0.8rem; text-align:center;
-    user-select:none; transition:transform .12s, box-shadow .12s;
-    position:relative;
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root {{
+    --bg:#FFFFFF; --bg-s:#F7F5F0; --bd:#E4DDD3; --bd-med:#C8BFB2;
+    --t1:#1C1917; --t2:#57534E; --t3:#A8A29E;
+    --pass:#16A34A; --pass-bg:#F0FDF4; --pass-bd:#BBF7D0;
+    --minor:#D97706; --minor-bg:#FFFBEB; --minor-bd:#FDE68A;
+    --major:#EA580C; --major-bg:#FFF7ED; --major-bd:#FDBA74;
+    --crit:#DC2626;  --crit-bg:#FEF2F2;  --crit-bd:#FECACA;
+    --r:10px; --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --shadow-h:0 4px 12px rgba(0,0,0,.1),0 2px 4px rgba(0,0,0,.05);
   }}
-  .stat-box.clickable {{ cursor:pointer; }}
-  .stat-box.clickable:hover {{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.1); }}
-  .stat-box.clickable:hover .hint {{ opacity:1; }}
-  .hint {{ position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
-    font-size:9px; color:#aaa; opacity:0; transition:opacity .15s; white-space:nowrap; }}
-  .s-num {{ font-size:2rem; font-weight:700; line-height:1; }}
-  .s-lbl {{ font-size:0.75rem; font-weight:600; color:#888; margin-top:4px;
-    text-transform:uppercase; letter-spacing:.05em; }}
-  .stat-total .s-num {{ color:#2e7d32; }}
-  .stat-pass  .s-num {{ color:#388e3c; }} .stat-pass  {{ border-color:#a5d6a7; }}
-  .stat-minor .s-num {{ color:#f57c00; }} .stat-minor {{ border-color:#ffcc80; }}
-  .stat-major .s-num {{ color:#e64a19; }} .stat-major {{ border-color:#ffab91; }}
-  .stat-crit  .s-num {{ color:#c62828; }} .stat-crit  {{ border-color:#ef9a9a; }}
+  * {{ box-sizing:border-box; margin:0; padding:0; }}
+  body {{ font-family:'IBM Plex Sans Thai',sans-serif; background:transparent; color:var(--t1); }}
+  .row {{ display:flex; gap:8px; flex-wrap:wrap; }}
+  .box {{
+    flex:1; min-width:80px; background:var(--bg);
+    border:1px solid var(--bd); border-radius:var(--r);
+    padding:0.95rem 0.7rem; text-align:center;
+    box-shadow:var(--shadow); position:relative;
+    transition:transform .15s,box-shadow .15s,border-color .15s;
+  }}
+  .box.click {{ cursor:pointer; }}
+  .box.click:hover {{ transform:translateY(-2px); box-shadow:var(--shadow-h); }}
+  .box.click:hover .hint {{ opacity:1; }}
+  .hint {{ position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+    font-size:0.6rem; color:var(--t3); opacity:0; transition:opacity .15s;
+    white-space:nowrap; letter-spacing:.04em; text-transform:uppercase; }}
+  .num {{ font-size:2rem; font-weight:700; line-height:1; letter-spacing:-0.03em; }}
+  .lbl {{ font-size:0.65rem; font-weight:600; color:var(--t3); margin-top:5px;
+    text-transform:uppercase; letter-spacing:.08em; }}
+  .box-tot .num {{ color:var(--t1); }}
+  .box-pass  {{ border-color:var(--pass-bd);  }} .box-pass  .num {{ color:var(--pass);  }}
+  .box-minor {{ border-color:var(--minor-bd); }} .box-minor .num {{ color:var(--minor); }}
+  .box-major {{ border-color:var(--major-bd); }} .box-major .num {{ color:var(--major); }}
+  .box-crit  {{ border-color:var(--crit-bd);  }} .box-crit  .num {{ color:var(--crit);  }}
 
-  .popup {{
-    display:none; margin-top:10px; background:#fffdf8;
-    border-radius:10px; padding:1.1rem 1.3rem;
-    border:1.5px solid #e0d8cc;
-    box-shadow:0 4px 16px rgba(0,0,0,.1);
-    position:relative; animation:popIn .15s ease;
-  }}
-  .popup.open {{ display:block; }}
-  @keyframes popIn {{ from{{transform:translateY(-5px);opacity:0}} to{{transform:translateY(0);opacity:1}} }}
-  .close-btn {{
-    position:absolute; top:8px; right:10px;
-    background:none; border:none; font-size:1rem;
-    cursor:pointer; color:#aaa; padding:2px 6px; line-height:1;
-  }}
-  .close-btn:hover {{ color:#555; }}
-  .pop-title {{ font-size:1.05rem; font-weight:700; margin:0 0 2px; }}
-  .pop-sub {{ font-size:0.75rem; font-weight:600; text-transform:uppercase;
-    letter-spacing:.06em; margin:0 0 0.7rem; opacity:.65; }}
-  .pop-desc {{ font-size:0.9rem; color:#333; line-height:1.6; margin:0 0 0.7rem; }}
-  .pop-q {{ font-size:0.84rem; background:#f5f0e8; border-radius:7px;
-    padding:.5rem .85rem; color:#555; border-left:3px solid; margin:0 0 0.7rem; }}
-  .pop-q strong {{ color:#333; }}
-  .tags {{ display:flex; flex-wrap:wrap; gap:6px; }}
-  .tag {{ font-size:0.75rem; padding:3px 10px; border-radius:20px; border:1px solid; }}
-</style>
-</head>
-<body>
-<div class="stats-row">
-  <div class="stat-box stat-total">
-    <div class="s-num">{total}</div>
-    <div class="s-lbl">ทั้งหมด</div>
+  /* popup */
+  .pop {{ display:none; margin-top:10px; background:var(--bg); border:1px solid var(--bd);
+    border-radius:var(--r); padding:1.1rem 1.3rem; box-shadow:var(--shadow-h);
+    position:relative; animation:fade .14s ease; }}
+  .pop.open {{ display:block; }}
+  @keyframes fade {{ from{{transform:translateY(-5px);opacity:0}} to{{transform:translateY(0);opacity:1}} }}
+  .x {{ position:absolute; top:10px; right:12px; background:none; border:none;
+    font-size:0.85rem; cursor:pointer; color:var(--t3); padding:3px 6px;
+    border-radius:4px; transition:background .1s,color .1s; line-height:1; }}
+  .x:hover {{ background:var(--bg-s); color:var(--t1); }}
+  .p-title {{ font-size:1rem; font-weight:700; margin-bottom:2px; }}
+  .p-sub   {{ font-size:0.68rem; font-weight:600; text-transform:uppercase;
+    letter-spacing:.07em; opacity:.6; margin-bottom:0.7rem; }}
+  .p-desc  {{ font-size:0.87rem; color:var(--t2); line-height:1.65; margin-bottom:0.7rem; }}
+  .p-q     {{ font-size:0.82rem; background:var(--bg-s); border-radius:6px;
+    padding:.5rem .85rem; color:var(--t2); border-left:2.5px solid; margin-bottom:0.7rem; }}
+  .p-q strong {{ color:var(--t1); }}
+  .tags {{ display:flex; flex-wrap:wrap; gap:5px; }}
+  .tag  {{ font-size:0.72rem; padding:3px 9px; border-radius:20px; border:1px solid; font-weight:500; }}
+</style></head><body>
+<div class="row">
+  <div class="box box-tot">
+    <div class="num">{total}</div><div class="lbl">ทั้งหมด</div>
   </div>
-  <div class="stat-box stat-pass clickable" onclick="open_('pass')">
-    <div class="s-num">{counts.get('Pass',0)}</div>
-    <div class="s-lbl">✅ ผ่าน</div>
+  <div class="box box-pass click" onclick="op('pass')">
+    <div class="num">{counts.get('Pass',0)}</div><div class="lbl">ผ่าน</div>
     <div class="hint">คลิกดูรายละเอียด</div>
   </div>
-  <div class="stat-box stat-minor clickable" onclick="open_('minor')">
-    <div class="s-num">{counts.get('Minor',0)}</div>
-    <div class="s-lbl">🟡 Minor</div>
+  <div class="box box-minor click" onclick="op('minor')">
+    <div class="num">{counts.get('Minor',0)}</div><div class="lbl">Minor</div>
     <div class="hint">คลิกดูรายละเอียด</div>
   </div>
-  <div class="stat-box stat-major clickable" onclick="open_('major')">
-    <div class="s-num">{counts.get('Major',0)}</div>
-    <div class="s-lbl">🟠 Major</div>
+  <div class="box box-major click" onclick="op('major')">
+    <div class="num">{counts.get('Major',0)}</div><div class="lbl">Major</div>
     <div class="hint">คลิกดูรายละเอียด</div>
   </div>
-  <div class="stat-box stat-crit clickable" onclick="open_('crit')">
-    <div class="s-num">{counts.get('Critical',0)}</div>
-    <div class="s-lbl">🔴 Critical</div>
+  <div class="box box-crit click" onclick="op('crit')">
+    <div class="num">{counts.get('Critical',0)}</div><div class="lbl">Critical</div>
     <div class="hint">คลิกดูรายละเอียด</div>
   </div>
 </div>
-
-<div class="popup" id="popup">
-  <button class="close-btn" onclick="close_()">✕</button>
-  <div class="pop-title" id="pTitle"></div>
-  <div class="pop-sub"   id="pSub"></div>
-  <div class="pop-desc"  id="pDesc"></div>
-  <div class="pop-q"     id="pQ"></div>
-  <div class="tags"      id="pTags"></div>
+<div class="pop" id="pop">
+  <button class="x" onclick="cl()">✕</button>
+  <div class="p-title" id="pT"></div>
+  <div class="p-sub"   id="pS"></div>
+  <div class="p-desc"  id="pD"></div>
+  <div class="p-q"     id="pQ"></div>
+  <div class="tags"    id="pTg"></div>
 </div>
-
 <script>
-var DATA = {{
-  pass:  {{ title:"✅ Pass — ผ่านแล้ว", sub:"ไม่พบข้อผิดพลาด", color:"#388e3c",
-    desc:"แถวที่ไม่พบข้อผิดพลาดใดๆ หรือมีข้อผิดพลาดเล็กน้อยมากจนยอมรับได้ตามเกณฑ์โปรเจกต์",
+var D={{
+  pass:{{title:"✅ Pass — ผ่านแล้ว",sub:"ไม่พบข้อผิดพลาด",color:"#16A34A",
+    desc:"แถวที่ไม่พบข้อผิดพลาดใดๆ หรือยอมรับได้ตามเกณฑ์โปรเจกต์",
     q:"ยอมรับได้ตามเกณฑ์โปรเจกต์?",
     tags:["ความหมายถูกต้อง","ภาษาเป็นธรรมชาติ","Glossary ตรงกัน"],
-    tc:"#e8f5e9", tx:"#1b5e20", tb:"#a5d6a7" }},
-  minor: {{ title:"🟡 Minor — ข้อผิดพลาดเล็กน้อย", sub:"แก้ได้ในรอบถัดไป", color:"#f57c00",
-    desc:"ความหมายยังถูกต้อง แต่คุณภาพภาษาไม่ดีพอ อาจดูไม่ professional หรือไม่สอดคล้องกับ style guide",
+    tc:"#F0FDF4",tx:"#15803D",tb:"#BBF7D0"}},
+  minor:{{title:"🟡 Minor — เล็กน้อย",sub:"แก้ได้ในรอบถัดไป",color:"#D97706",
+    desc:"ความหมายยังถูกต้อง แต่คุณภาพภาษาไม่ดีพอ อาจไม่สอดคล้องกับ style guide",
     q:"ความหมายถูก แต่ดูไม่ professional?",
-    tags:["สะกดผิด (typo)","เครื่องหมายไม่สอดคล้อง","ความยาวผิดสัดส่วน","Inconsistency เล็กน้อย"],
-    tc:"#fff8e1", tx:"#e65100", tb:"#ffcc80" }},
-  major: {{ title:"🟠 Major — ข้อผิดพลาดสำคัญ", sub:"ต้องแก้ก่อน publish", color:"#e64a19",
-    desc:"ความหมายเปลี่ยนไปบางส่วน ผู้อ่านอาจเข้าใจผิดได้ แต่ยังไม่ถึงขั้นก่อความเสียหายร้ายแรง",
+    tags:["สะกดผิด","เครื่องหมายไม่สอดคล้อง","ความยาวผิดสัดส่วน","Inconsistency เล็กน้อย"],
+    tc:"#FFFBEB",tx:"#92400E",tb:"#FDE68A"}},
+  major:{{title:"🟠 Major — สำคัญ",sub:"ต้องแก้ก่อน publish",color:"#EA580C",
+    desc:"ความหมายเปลี่ยนไปบางส่วน ผู้อ่านอาจเข้าใจผิดได้",
     q:"ผู้อ่านจะเข้าใจผิดไหม?",
-    tags:["Glossary ผิด (สำคัญ)","ละเว้น clause สำคัญ","โครงสร้างประโยคผิด","ตัวเลขไม่ตรง"],
-    tc:"#fff3e0", tx:"#bf360c", tb:"#ffab91" }},
-  crit:  {{ title:"🔴 Critical — ร้ายแรง", sub:"ห้ามปล่อยผ่านเด็ดขาด", color:"#c62828",
-    desc:"ความหมายเปลี่ยนไปจนตรงข้าม ข้อมูลสำคัญหาย หรืออาจก่อให้เกิดความเสียหายในเชิงกฎหมาย/ความปลอดภัย",
-    q:"ถ้าปล่อยผ่าน จะเกิดความเสียหายไหม?",
+    tags:["Glossary ผิด","ละเว้น clause สำคัญ","โครงสร้างผิด","ตัวเลขไม่ตรง"],
+    tc:"#FFF7ED",tx:"#9A3412",tb:"#FDBA74"}},
+  crit:{{title:"🔴 Critical — ร้ายแรง",sub:"ห้ามปล่อยผ่าน",color:"#DC2626",
+    desc:"ความหมายเปลี่ยนไปจนตรงข้าม หรืออาจก่อความเสียหายร้ายแรง",
+    q:"ถ้าปล่อยผ่านจะเกิดความเสียหายไหม?",
     tags:["ตัวแปรหาย","ความหมายตรงข้าม","ไม่ได้แปล","ตัวเลขสำคัญหาย"],
-    tc:"#fce4ec", tx:"#880e4f", tb:"#ef9a9a" }}
+    tc:"#FEF2F2",tx:"#991B1B",tb:"#FECACA"}}
 }};
-var cur = null;
-function open_(k) {{
-  if (cur === k) {{ close_(); return; }}
-  cur = k;
-  var d = DATA[k], p = document.getElementById('popup');
-  document.getElementById('pTitle').textContent = d.title;
-  document.getElementById('pTitle').style.color = d.color;
-  document.getElementById('pSub').textContent   = d.sub;
-  document.getElementById('pSub').style.color   = d.color;
-  document.getElementById('pDesc').textContent  = d.desc;
-  document.getElementById('pQ').innerHTML = '<strong>ถามตัวเองว่า:</strong> ' + d.q;
-  document.getElementById('pQ').style.borderColor = d.color;
-  document.getElementById('pTags').innerHTML = d.tags.map(function(t) {{
+var cur=null;
+function op(k){{
+  if(cur===k){{cl();return;}}
+  cur=k; var d=D[k],p=document.getElementById('pop');
+  document.getElementById('pT').textContent=d.title;
+  document.getElementById('pT').style.color=d.color;
+  document.getElementById('pS').textContent=d.sub;
+  document.getElementById('pS').style.color=d.color;
+  document.getElementById('pD').textContent=d.desc;
+  document.getElementById('pQ').innerHTML='<strong>ถามตัวเองว่า:</strong> '+d.q;
+  document.getElementById('pQ').style.borderColor=d.color;
+  document.getElementById('pTg').innerHTML=d.tags.map(function(t){{
     return '<span class="tag" style="background:'+d.tc+';color:'+d.tx+';border-color:'+d.tb+'">'+t+'</span>';
   }}).join('');
-  p.classList.remove('open');
-  void p.offsetWidth;
-  p.classList.add('open');
+  p.classList.remove('open'); void p.offsetWidth; p.classList.add('open');
 }}
-function close_() {{
-  cur = null;
-  document.getElementById('popup').classList.remove('open');
-}}
-document.addEventListener('keydown', function(e) {{ if(e.key==='Escape') close_(); }});
-</script>
-</body>
-</html>
-        """, height=280, scrolling=False)
+function cl(){{cur=null;document.getElementById('pop').classList.remove('open');}}
+document.addEventListener('keydown',function(e){{if(e.key==='Escape')cl();}});
+</script></body></html>""", height=275, scrolling=False)
 
 
         pass_pct = counts.get("Pass",0) / total if total else 0
@@ -846,74 +1140,64 @@ document.addEventListener('keydown', function(e) {{ if(e.key==='Escape') close_(
         components.html(f"""
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
-  body {{ margin:0; padding:0; font-family:'Sarabun',sans-serif; background:transparent; }}
-  .mqm-wrap {{ display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; margin:1rem 0; }}
-  .mqm-score-box {{
-    background:{gb}; border:2px solid {gc}; border-radius:14px;
-    padding:1.2rem 2rem; min-width:180px; text-align:center; flex-shrink:0;
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+  *{{box-sizing:border-box;margin:0;padding:0;}}
+  body{{font-family:'IBM Plex Sans Thai',sans-serif;background:transparent;color:#1C1917;}}
+  .wrap{{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;}}
+  .score-box{{
+    background:{gb};border:1.5px solid {gc};border-radius:12px;
+    padding:1.2rem 1.8rem;min-width:170px;text-align:center;flex-shrink:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   }}
-  .mqm-num {{ font-size:3.2rem; font-weight:800; color:{gc}; line-height:1; }}
-  .mqm-label {{ font-size:0.78rem; font-weight:700; color:{gc}; text-transform:uppercase;
-    letter-spacing:.07em; margin-top:4px; }}
-  .mqm-grade {{ font-size:1.1rem; font-weight:700; color:{gc}; margin-top:6px; }}
-  .mqm-detail {{
-    flex:1; background:#fffdf8; border:1.5px solid #e0d8cc; border-radius:14px;
-    padding:1.1rem 1.4rem; min-width:260px;
-  }}
-  .mqm-detail-title {{ font-size:0.85rem; font-weight:700; color:#555;
-    text-transform:uppercase; letter-spacing:.05em; margin-bottom:0.7rem; }}
-  .mqm-row {{ display:flex; justify-content:space-between; align-items:center;
-    padding:0.28rem 0; border-bottom:1px solid #f0ece4; font-size:0.93rem; }}
-  .mqm-row:last-child {{ border-bottom:none; }}
-  .mqm-row-label {{ color:#444; }}
-  .mqm-row-val {{ font-weight:600; }}
-  .gauge-wrap {{ margin-top:10px; }}
-  .gauge-bg {{ background:#e0d8cc; border-radius:6px; height:10px; overflow:hidden; }}
-  .gauge-fill {{ height:10px; border-radius:6px; background:{gauge_color};
-    width:{gauge_pct*100:.1f}%; transition:width .4s ease; }}
-  .gauge-labels {{ display:flex; justify-content:space-between;
-    font-size:0.72rem; color:#aaa; margin-top:3px; }}
-  .mqm-formula {{ font-size:0.78rem; color:#999; margin-top:0.6rem; line-height:1.5; }}
+  .score-num{{font-size:3rem;font-weight:700;color:{gc};line-height:1;letter-spacing:-0.04em;font-family:'IBM Plex Mono',monospace;}}
+  .score-lbl{{font-size:0.62rem;font-weight:600;color:{gc};text-transform:uppercase;letter-spacing:.1em;opacity:.7;}}
+  .score-grade{{font-size:0.92rem;font-weight:600;color:{gc};margin-top:4px;}}
+  .gauge-bg{{background:rgba(0,0,0,.1);border-radius:4px;height:5px;width:100%;overflow:hidden;margin-top:8px;}}
+  .gauge-fill{{height:5px;border-radius:4px;background:{gc};width:{gauge_pct*100:.1f}%;}}
+  .detail{{flex:1;background:#FFFFFF;border:1px solid #E4DDD3;border-radius:12px;padding:1rem 1.3rem;min-width:240px;}}
+  .d-title{{font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#A8A29E;margin-bottom:0.8rem;}}
+  .d-row{{display:flex;justify-content:space-between;align-items:center;padding:0.32rem 0;border-bottom:1px solid #F2EFE9;font-size:0.85rem;}}
+  .d-row:last-child{{border-bottom:none;}}
+  .d-lbl{{color:#57534E;}}
+  .d-val{{font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;}}
+  .formula{{font-size:0.72rem;color:#A8A29E;margin-top:0.6rem;line-height:1.6;padding-top:0.5rem;border-top:1px solid #F2EFE9;}}
 </style></head><body>
-<div class="mqm-wrap">
-  <div class="mqm-score-box">
-    <div class="mqm-num">{mqm_score:.1f}</div>
-    <div class="mqm-label">MQM Score</div>
-    <div class="mqm-grade">{'⭐' if mqm_grade=='Excellent' else '✅' if mqm_grade=='Good' else '⚠️' if mqm_grade=='Acceptable' else '❌'} {gth}</div>
-    <div class="gauge-wrap">
-      <div class="gauge-bg"><div class="gauge-fill"></div></div>
-      <div class="gauge-labels"><span>0</span><span>50</span><span>100</span></div>
-    </div>
+<div class="wrap">
+  <div class="score-box">
+    <div class="score-lbl">MQM Score</div>
+    <div class="score-num">{mqm_score:.1f}</div>
+    <div class="score-grade">{'⭐' if mqm_grade=='Excellent' else '✅' if mqm_grade=='Good' else '⚠️' if mqm_grade=='Acceptable' else '❌'} {gth}</div>
+    <div class="gauge-bg"><div class="gauge-fill"></div></div>
   </div>
-  <div class="mqm-detail">
-    <div class="mqm-detail-title">รายละเอียดคะแนน MQM</div>
-    <div class="mqm-row">
-      <span class="mqm-row-label">🟡 Minor errors × {mqm_w.get('Minor',1)} pts</span>
-      <span class="mqm-row-val" style="color:#f57c00">{mqm_penalty_counts['Minor']} × {mqm_w.get('Minor',1)} = {mqm_penalty_counts['Minor']*mqm_w.get('Minor',1)} pts</span>
+  <div class="detail">
+    <div class="d-title">รายละเอียดคะแนน</div>
+    <div class="d-row">
+      <span class="d-lbl">🟡 Minor × {mqm_w.get('Minor',1)} pts</span>
+      <span class="d-val" style="color:#D97706">{mqm_penalty_counts['Minor']} errors = {mqm_penalty_counts['Minor']*mqm_w.get('Minor',1)} pts</span>
     </div>
-    <div class="mqm-row">
-      <span class="mqm-row-label">🟠 Major errors × {mqm_w.get('Major',5)} pts</span>
-      <span class="mqm-row-val" style="color:#e64a19">{mqm_penalty_counts['Major']} × {mqm_w.get('Major',5)} = {mqm_penalty_counts['Major']*mqm_w.get('Major',5)} pts</span>
+    <div class="d-row">
+      <span class="d-lbl">🟠 Major × {mqm_w.get('Major',5)} pts</span>
+      <span class="d-val" style="color:#EA580C">{mqm_penalty_counts['Major']} errors = {mqm_penalty_counts['Major']*mqm_w.get('Major',5)} pts</span>
     </div>
-    <div class="mqm-row">
-      <span class="mqm-row-label">🔴 Critical errors × {mqm_w.get('Critical',25)} pts</span>
-      <span class="mqm-row-val" style="color:#c62828">{mqm_penalty_counts['Critical']} × {mqm_w.get('Critical',25)} = {mqm_penalty_counts['Critical']*mqm_w.get('Critical',25)} pts</span>
+    <div class="d-row">
+      <span class="d-lbl">🔴 Critical × {mqm_w.get('Critical',25)} pts</span>
+      <span class="d-val" style="color:#DC2626">{mqm_penalty_counts['Critical']} errors = {mqm_penalty_counts['Critical']*mqm_w.get('Critical',25)} pts</span>
     </div>
-    <div class="mqm-row">
-      <span class="mqm-row-label">จำนวนคำโดยประมาณ</span>
-      <span class="mqm-row-val">{mqm_words:,} คำ</span>
+    <div class="d-row">
+      <span class="d-lbl">จำนวนคำโดยประมาณ</span>
+      <span class="d-val">{mqm_words:,} words</span>
     </div>
-    <div class="mqm-row">
-      <span class="mqm-row-label">Penalty per 1,000 words</span>
-      <span class="mqm-row-val">{mqm_penalty_per1k:.2f} pts</span>
+    <div class="d-row">
+      <span class="d-lbl">Penalty / 1,000 words</span>
+      <span class="d-val">{mqm_penalty_per1k:.2f} pts</span>
     </div>
-    <div class="mqm-formula">
-      สูตร: Score = 100 − (penalty ÷ จำนวนคำ × 1,000)<br>
-      เกณฑ์: Excellent ≥ {mqm_th.get('excellent',90)} · Good ≥ {mqm_th.get('good',75)} · Acceptable ≥ {mqm_th.get('acceptable',60)} · ต่ำกว่า = Rejected
+    <div class="formula">
+      score = 100 − (Σ penalty ÷ words × 1,000) &nbsp;·&nbsp;
+      Excellent ≥ {mqm_th.get('excellent',90)} · Good ≥ {mqm_th.get('good',75)} · Acceptable ≥ {mqm_th.get('acceptable',60)}
     </div>
   </div>
 </div>
-</body></html>""", height=210, scrolling=False)
+</body></html>""", height=200, scrolling=False)
 
         st.markdown('<div class="sec-title">กรองตามระดับความรุนแรง</div>', unsafe_allow_html=True)
         filter_sev = st.multiselect(
@@ -963,17 +1247,18 @@ document.addEventListener('keydown', function(e) {{ if(e.key==='Escape') close_(
             for fr in flat_rows:
                 sc = SEV_CLASS.get(fr["severity"], "sev-minor")
                 em = SEV_EMOJI.get(fr["severity"], "🟡")
-                # escape HTML entities to prevent injection, but keep full text
                 src_safe = fr["source"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
                 tgt_safe = fr["target"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                rule_safe = fr["rule"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                detail_safe = fr["detail"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
                 rows_html += f"""
                 <tr>
                   <td class="td-num">{fr['row']}</td>
                   <td class="td-text">{src_safe}</td>
                   <td class="td-text">{tgt_safe}</td>
-                  <td class="td-rule">{fr['rule']}</td>
-                  <td class="sev-cell {sc}">{em} {fr['severity']}</td>
-                  <td class="td-detail">{fr['detail']}</td>
+                  <td><span class="td-rule">{rule_safe}</span></td>
+                  <td class="sev-cell {sc}"><span class="sev-badge">{em} {fr['severity']}</span></td>
+                  <td class="td-detail">{detail_safe}</td>
                 </tr>"""
 
             st.markdown(f"""
