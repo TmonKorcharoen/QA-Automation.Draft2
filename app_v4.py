@@ -1,0 +1,1712 @@
+import streamlit as st
+import pandas as pd
+import re
+import io
+from datetime import datetime
+import streamlit.components.v1 as components
+
+st.set_page_config(
+    page_title="TransQA Studio",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+/* ═══════════════════════════════════════════
+   ROOT TOKENS
+═══════════════════════════════════════════ */
+:root {
+    --bg:        #F7F5F0;
+    --bg-card:   #FFFFFF;
+    --bg-subtle: #F2EFE9;
+    --border:    #E4DDD3;
+    --border-med:#C8BFB2;
+    --text-1:    #1C1917;
+    --text-2:    #57534E;
+    --text-3:    #A8A29E;
+    --accent:    #16A34A;
+    --accent-dk: #15803D;
+    --accent-lt: #DCFCE7;
+    --accent-mid:#BBF7D0;
+
+    --pass:   #16A34A;  --pass-bg:  #F0FDF4;  --pass-bd:  #BBF7D0;
+    --minor:  #D97706;  --minor-bg: #FFFBEB;  --minor-bd: #FDE68A;
+    --major:  #EA580C;  --major-bg: #FFF7ED;  --major-bd: #FDBA74;
+    --crit:   #DC2626;  --crit-bg:  #FEF2F2;  --crit-bd:  #FECACA;
+
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:    0 4px 12px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
+html, body, [class*="css"], .stApp {
+    font-family: 'IBM Plex Sans Thai', 'DM Sans', sans-serif !important;
+    background-color: var(--bg) !important;
+    color: var(--text-1) !important;
+    -webkit-font-smoothing: antialiased;
+}
+.main .block-container {
+    padding: 0 2rem 4rem 2rem !important;
+    max-width: 1340px !important;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER — full-bleed, refined
+═══════════════════════════════════════════ */
+.app-header {
+    background: var(--text-1);
+    color: #fff;
+    padding: 1.5rem 2.5rem 1.4rem;
+    margin: 0 -2rem 2.2rem -2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.4rem;
+    border-bottom: 3px solid var(--accent);
+    position: relative;
+    overflow: hidden;
+}
+.app-header::after {
+    content: 'TQS';
+    position: absolute; right: 2rem; top: 50%;
+    transform: translateY(-50%);
+    font-size: 5rem; font-weight: 700; letter-spacing: -0.05em;
+    color: rgba(255,255,255,.04);
+    font-family: 'DM Sans', sans-serif;
+    pointer-events: none; user-select: none;
+}
+.app-header-badge {
+    background: var(--accent);
+    color: #fff;
+    width: 2.8rem; height: 2.8rem; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(22,163,74,.4);
+}
+.app-header-title {
+    font-size: 1.45rem; font-weight: 700; margin: 0; letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.app-header-sub {
+    font-size: 0.82rem; margin: 0.2rem 0 0; opacity: 0.55; font-weight: 400;
+    letter-spacing: 0.02em;
+}
+.app-header-ver {
+    margin-left: auto; margin-right: 5rem;
+    font-size: 0.7rem; font-family: 'IBM Plex Mono', monospace;
+    color: rgba(255,255,255,.3); letter-spacing: .06em;
+}
+
+/* ═══════════════════════════════════════════
+   TABS — clean underline style
+═══════════════════════════════════════════ */
+.stTabs [data-baseweb="tab-list"] {
+    border-bottom: 1.5px solid var(--border) !important;
+    background: transparent !important;
+    gap: 0 !important; padding: 0 !important;
+    margin-bottom: 1.6rem;
+}
+.stTabs [data-baseweb="tab"] {
+    font-size: 0.9rem !important; font-weight: 500 !important;
+    color: var(--text-3) !important;
+    padding: 0.7rem 1.4rem !important;
+    border-radius: 0 !important; background: transparent !important;
+    border-bottom: 2.5px solid transparent !important;
+    transition: color .15s, border-color .15s;
+    letter-spacing: .01em;
+}
+.stTabs [data-baseweb="tab"]:hover { color: var(--text-2) !important; }
+.stTabs [aria-selected="true"] {
+    color: var(--accent-dk) !important;
+    border-bottom: 2.5px solid var(--accent) !important;
+    background: transparent !important;
+    font-weight: 600 !important;
+}
+.stTabs [data-baseweb="tab-highlight"],
+.stTabs [data-baseweb="tab-border"] { display: none !important; }
+
+/* ═══════════════════════════════════════════
+   SECTION TITLES
+═══════════════════════════════════════════ */
+.sec-title {
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase; letter-spacing: .1em;
+    margin: 1.8rem 0 1rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+}
+.card-sm {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ═══════════════════════════════════════════
+   FILE BADGE
+═══════════════════════════════════════════ */
+.file-info {
+    background: var(--accent-lt); border: 1px solid var(--accent-mid);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.9rem; font-size: 0.85rem; color: var(--accent-dk);
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-weight: 500; margin-bottom: 1.2rem;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════
+   STAT BOXES (inline Streamlit use)
+═══════════════════════════════════════════ */
+.stats-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat-box {
+    flex: 1; min-width: 88px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 0.8rem; text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s, box-shadow .15s;
+}
+.stat-box.clickable { cursor: pointer; }
+.stat-box.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+.s-num { font-size: 2.1rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+.s-lbl { font-size: 0.68rem; font-weight: 600; color: var(--text-3); margin-top: 5px;
+    text-transform: uppercase; letter-spacing: .08em; }
+
+.stat-total .s-num { color: var(--text-1); }
+.stat-pass  { border-color: var(--pass-bd);  } .stat-pass  .s-num { color: var(--pass);  }
+.stat-minor { border-color: var(--minor-bd); } .stat-minor .s-num { color: var(--minor); }
+.stat-major { border-color: var(--major-bd); } .stat-major .s-num { color: var(--major); }
+.stat-crit  { border-color: var(--crit-bd);  } .stat-crit  .s-num { color: var(--crit);  }
+
+/* ═══════════════════════════════════════════
+   QA TABLE — clean, airy
+═══════════════════════════════════════════ */
+.qa-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.88rem; margin-top: 1rem;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+}
+.qa-table thead tr {
+    background: var(--bg-subtle);
+    border-bottom: 1.5px solid var(--border-med);
+}
+.qa-table thead th {
+    padding: 0.75rem 1rem; font-weight: 600;
+    color: var(--text-2); text-align: left;
+    font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: .07em; white-space: nowrap;
+}
+.qa-table tbody tr { border-bottom: 1px solid var(--border); }
+.qa-table tbody tr:last-child { border-bottom: none; }
+.qa-table tbody tr:hover { background: var(--bg-subtle); }
+.qa-table td {
+    padding: 0.85rem 1rem; vertical-align: top;
+    color: var(--text-1); line-height: 1.65;
+}
+.td-num  { font-weight: 600; color: var(--text-3); width: 40px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; }
+.td-text { min-width: 180px; max-width: 260px; word-break: break-word;
+    font-size: 0.86rem; color: var(--text-2); }
+.td-rule { white-space: nowrap; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem; color: var(--text-3);
+    background: var(--bg-subtle); padding: 2px 8px;
+    border-radius: 4px; display: inline-block; }
+.sev-cell { white-space: nowrap; }
+.sev-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.75rem; font-weight: 600; padding: 3px 9px;
+    border-radius: 20px; border: 1px solid;
+}
+.sev-pass  .sev-badge { background: var(--pass-bg);  color: var(--pass);  border-color: var(--pass-bd);  }
+.sev-minor .sev-badge { background: var(--minor-bg); color: var(--minor); border-color: var(--minor-bd); }
+.sev-major .sev-badge { background: var(--major-bg); color: var(--major); border-color: var(--major-bd); }
+.sev-crit  .sev-badge { background: var(--crit-bg);  color: var(--crit);  border-color: var(--crit-bd);  }
+.td-detail { color: var(--text-2); font-size: 0.84rem; min-width: 150px; }
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.stButton > button {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.88rem !important; font-weight: 600 !important;
+    padding: 0.5rem 1.4rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+    letter-spacing: .01em !important;
+    transition: background .15s, transform .1s, box-shadow .15s !important;
+    box-shadow: 0 1px 3px rgba(22,163,74,.25) !important;
+}
+.stButton > button:hover {
+    background: var(--accent-dk) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 3px 8px rgba(22,163,74,.3) !important;
+}
+.stButton > button:active { transform: translateY(0) !important; }
+
+/* ═══════════════════════════════════════════
+   INPUTS / SELECT
+═══════════════════════════════════════════ */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stNumberInput > div > div > input {
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-size: 0.9rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+    background: var(--bg-card) !important;
+    color: var(--text-1) !important;
+    padding: 0.45rem 0.75rem !important;
+    transition: border-color .15s, box-shadow .15s !important;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(22,163,74,.12) !important;
+    outline: none !important;
+}
+.stSelectbox > div > div {
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    background: var(--bg-card) !important;
+    font-size: 0.9rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+}
+
+/* Labels */
+.stTextInput label, .stSelectbox label, .stTextArea label,
+.stNumberInput label, .stMultiSelect label, .stFileUploader label {
+    font-size: 0.78rem !important; font-weight: 600 !important;
+    color: var(--text-2) !important; text-transform: uppercase !important;
+    letter-spacing: .06em !important; margin-bottom: 4px !important;
+}
+
+/* ═══════════════════════════════════════════
+   TOGGLE
+═══════════════════════════════════════════ */
+.stToggle > label {
+    font-size: 0.88rem !important;
+    font-family: 'IBM Plex Sans Thai', sans-serif !important;
+    color: var(--text-1) !important;
+    font-weight: 400 !important;
+}
+[data-testid="stToggle"] [role="switch"][aria-checked="true"] {
+    background-color: var(--accent) !important;
+}
+
+/* ═══════════════════════════════════════════
+   EXPANDER
+═══════════════════════════════════════════ */
+div[data-testid="stExpander"] {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    background: var(--bg-card) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: 0.5rem !important;
+    overflow: hidden !important;
+}
+div[data-testid="stExpander"] > div:first-child {
+    padding: 0.75rem 1rem !important;
+    background: var(--bg-subtle) !important;
+}
+div[data-testid="stExpander"] summary {
+    font-weight: 500 !important; font-size: 0.92rem !important;
+    color: var(--text-1) !important;
+}
+
+/* ═══════════════════════════════════════════
+   MULTISELECT
+═══════════════════════════════════════════ */
+.stMultiSelect [data-baseweb="tag"] {
+    background-color: var(--accent-lt) !important;
+    color: var(--accent-dk) !important;
+    border: 1px solid var(--accent-mid) !important;
+    border-radius: 4px !important; font-size: 0.82rem !important;
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════ */
+.stProgress > div > div > div > div {
+    background: var(--accent) !important;
+    border-radius: 4px !important;
+}
+.stProgress > div > div > div {
+    background: var(--border) !important;
+    border-radius: 4px !important;
+    height: 6px !important;
+}
+
+/* ═══════════════════════════════════════════
+   ALERTS / INFO
+═══════════════════════════════════════════ */
+.stAlert {
+    border-radius: var(--radius) !important;
+    font-size: 0.88rem !important;
+    border-left-width: 3px !important;
+}
+.stSuccess { border-color: var(--accent) !important; }
+
+/* ═══════════════════════════════════════════
+   DATAFRAME
+═══════════════════════════════════════════ */
+.stDataFrame {
+    border-radius: var(--radius) !important;
+    overflow: hidden !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* ═══════════════════════════════════════════
+   CAPTION / SMALL TEXT
+═══════════════════════════════════════════ */
+.stCaption, [data-testid="stCaptionContainer"] {
+    color: var(--text-3) !important; font-size: 0.8rem !important;
+}
+
+/* ═══════════════════════════════════════════
+   FILE UPLOADER
+═══════════════════════════════════════════ */
+[data-testid="stFileUploader"] > div {
+    background: var(--bg-card) !important;
+    border: 2px dashed var(--border-med) !important;
+    border-radius: var(--radius) !important;
+    transition: border-color .2s !important;
+}
+[data-testid="stFileUploader"] > div:hover {
+    border-color: var(--accent) !important;
+}
+
+/* ═══════════════════════════════════════════
+   POPUP (stats widget)
+═══════════════════════════════════════════ */
+.popup {
+    display: none; margin-top: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.3rem;
+    box-shadow: var(--shadow);
+    position: relative;
+    animation: popIn .15s ease;
+}
+.popup.open { display: block; }
+@keyframes popIn {
+    from { transform: translateY(-6px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+.mono { font-family: 'IBM Plex Mono', monospace; }
+.hint-text { font-size: 0.78rem; color: var(--text-3); }
+code {
+    font-family: 'IBM Plex Mono', monospace !important;
+    background: var(--bg-subtle) !important;
+    padding: 1px 5px !important; border-radius: 3px !important;
+    font-size: 0.85em !important; color: var(--accent-dk) !important;
+}
+
+/* ═══════════════════════════════════════════
+   GLOSSARY GRID — tighten row inputs
+═══════════════════════════════════════════ */
+[data-testid="column"] .stTextInput > div > div > input {
+    border-radius: 0 !important;
+    border-color: var(--border) !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: var(--bg-card) !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.88rem !important;
+}
+[data-testid="column"] .stTextInput > div > div > input:focus {
+    border-bottom: 1.5px solid var(--accent) !important;
+    box-shadow: none !important;
+    background: #FAFFF8 !important;
+}
+[data-testid="column"] .stSelectbox > div > div {
+    border-radius: 0 !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: var(--bg-card) !important;
+    font-size: 0.88rem !important;
+}
+/* remove top-margin gap between grid rows */
+.stTextInput, .stSelectbox { margin-bottom: 0 !important; }
+
+/* ═══════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+</style>
+""", unsafe_allow_html=True)
+
+# ── State ────────────────────────────────────────────────────────────────────────
+def init_state():
+    defaults = {
+        "glossary": [],
+        "history": [],
+        "style_guide": {
+            "punctuation": [
+                # ── ไวยากรณ์ภาษาอังกฤษ (grammar) — ปิด default เพราะภาษาไทยไม่ใช้
+                {"symbol": ".",  "name": "จุด (Full Stop)",          "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": ",",  "name": "จุลภาค (Comma)",           "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": "!",  "name": "อัศเจรีย์ (Exclamation)",  "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": "?",  "name": "ปรัศนี (Question Mark)",   "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": ":",  "name": "ทวิภาค (Colon)",           "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": ";",  "name": "อัฒภาค (Semicolon)",       "type": "grammar", "enabled": False, "severity": "Minor"},
+                {"symbol": "-",  "name": "ยัติภังค์ (Hyphen)",       "type": "grammar", "enabled": False, "severity": "Minor"},
+                # ── อักขระพิเศษ (special) — เปิด default เพราะต้องคงไว้เสมอ
+                {"symbol": "...", "name": "จุดไข่ปลา (Ellipsis)",    "type": "special", "enabled": True,  "severity": "Minor"},
+                {"symbol": "—",  "name": "ยัติภังค์ยาว (Em Dash)",   "type": "special", "enabled": True,  "severity": "Minor"},
+                {"symbol": '"',  "name": "อัญประกาศคู่",             "type": "special", "enabled": True,  "severity": "Minor"},
+                {"symbol": "※",  "name": "เครื่องหมายอ้างอิง",      "type": "special", "enabled": False, "severity": "Minor"},
+            ],
+            "encoding": "UTF-8", "font": "", "tone": "Formal",
+            "max_length_ratio": 1.5, "min_length_ratio": 0.5,
+            "check_length": True, "check_encoding": True,
+        },
+        "qa_rules": {
+            "placeholders": True, "glossary_check": True, "punctuation": True,
+            "spelling_en": True,  "spelling_th": True,    "numbers": True,
+            "extra_symbols": True,"length_check": True,   "encoding_check": True,
+            "consistency_check": True,
+            "double_space": True,       # ตรวจเคาะวรรคซ้ำ
+            "en_final_period": True,    # ตรวจจุดท้ายประโยค EN
+        },
+        # MQM penalty weights (penalty points per error per 1,000 words)
+        "mqm_weights": {
+            "Minor": 1,
+            "Major": 5,
+            "Critical": 25,
+        },
+        "mqm_threshold": {
+            "excellent": 90,   # ≥ 90 = Excellent
+            "good":      75,   # ≥ 75 = Good
+            "acceptable": 60,  # ≥ 60 = Acceptable
+            # < 60 = Rejected
+        },
+        "qa_results": [], "current_file": None,
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+init_state()
+
+# ── QA Engine ────────────────────────────────────────────────────────────────────
+PH_PAT  = re.compile(r'\{[^}]+\}|\[[^\]]+\]|%[sd\d]|<[^>]+>')
+NUM_PAT = re.compile(r'\b\d[\d,\.]*\b')
+TH_PAT  = re.compile(r'[\u0e00-\u0e7f]')
+EN_TYPOS = {
+    "teh":"the","recieve":"receive","occured":"occurred","seperate":"separate",
+    "definately":"definitely","accomodate":"accommodate","begining":"beginning",
+    "beleive":"believe","freind":"friend","goverment":"government",
+    "necesary":"necessary","occassion":"occasion","succesful":"successful",
+    "suprise":"surprise","tommorrow":"tomorrow","untill":"until","wierd":"weird",
+    "reccomend":"recommend","refered":"referred","relevent":"relevant",
+}
+TH_TYPOS = {
+    "กรูณา":"กรุณา","ใด้":"ได้","โดยเฉพราะ":"โดยเฉพาะ",
+    "ผลิดภัณฑ์":"ผลิตภัณฑ์","สำเหร็จ":"สำเร็จ","บริหาน":"บริหาร",
+}
+SEV_EMOJI = {"Pass":"✅","Minor":"🟡","Major":"🟠","Critical":"🔴"}
+SEV_CLASS = {"Pass":"sev-pass","Minor":"sev-minor","Major":"sev-major","Critical":"sev-crit"}
+
+# ปี พ.ศ. ↔ ค.ศ. ±543 — ถ้าเลขต่างกัน 543 ถือว่าตรงกัน
+def numbers_match(src_nums, tgt_nums):
+    """คืน list ของตัวเลขใน source ที่ไม่มีใน target (รวม offset พ.ศ./ค.ศ.)"""
+    tgt_set_raw = set(tgt_nums)
+    # normalize tgt: ลบ comma/dot เพื่อเทียบกับ offset ได้ถูกต้อง
+    tgt_set_norm = {re.sub(r'[,\.]', '', t) for t in tgt_nums}
+    missing = []
+    for n in src_nums:
+        try:
+            nval = int(re.sub(r'[,\.]', '', n))
+            n_norm = str(nval)
+            # ตรงกัน (raw หรือ normalized)
+            if n in tgt_set_raw or n_norm in tgt_set_norm:
+                continue
+            # อาจแปลงปี พ.ศ. → ค.ศ. (ลบ 543) หรือกลับกัน
+            if str(nval - 543) in tgt_set_norm or str(nval + 543) in tgt_set_norm:
+                continue
+            missing.append(n)
+        except Exception:
+            if n not in tgt_set_raw:
+                missing.append(n)
+    return missing
+
+def run_qa(df, src_col, tgt_col, rules, glossary, style):
+    results = []
+
+    # ── Pre-pass: Consistency Check ───────────────────────────────────────────
+    # สแกนทั้งไฟล์ก่อน เพื่อดูว่า term เดียวกันถูกแปลกี่รูปแบบ
+    consistency_map = {}   # term_lower → { term, imp, expected, rows_found: {trans_used: [row_nums]} }
+    if rules.get("glossary_check") and rules.get("consistency_check"):
+        for g in glossary:
+            if not g.get("enforce_consistency"):
+                continue
+            term = g.get("term","").strip()
+            if not term:
+                continue
+            imp      = g.get("importance","Major")
+            expected = g.get("translation","").strip()
+            rows_found = {}  # trans_used (str) → [row_nums]
+
+            for idx2, row2 in df.iterrows():
+                src2 = str(row2[src_col]) if pd.notna(row2[src_col]) else ""
+                tgt2 = str(row2[tgt_col]) if pd.notna(row2[tgt_col]) else ""
+                if term.lower() not in src2.lower():
+                    continue
+
+                if expected and expected.lower() in tgt2.lower():
+                    used = expected   # แปลถูก ใช้ expected เป็น key
+                elif not expected:
+                    # ไม่ได้กำหนด expected → ใช้ target ทั้งหมดเป็น key เพื่อตรวจว่าเหมือนกันไหม
+                    used = tgt2.strip()
+                else:
+                    used = f"__other__: {tgt2[:60]}"  # แปลต่างออกไป
+
+                rows_found.setdefault(used, []).append(idx2 + 1)
+
+            consistency_map[term.lower()] = {
+                "term": term, "imp": imp, "expected": expected,
+                "rows_found": rows_found,
+            }
+
+    # สร้าง lookup row_num → [issues] จาก consistency_map
+    consist_issues_by_row = {}
+    for term_lower, cdata in consistency_map.items():
+        rows_found = cdata["rows_found"]
+        term       = cdata["term"]
+        imp        = cdata["imp"]
+        expected   = cdata["expected"]
+
+        if not rows_found:
+            continue
+
+        unique_keys = list(rows_found.keys())
+
+        if expected:
+            # มี expected → ตรวจง่าย: แถวไหนไม่ใช้ expected → flagged
+            wrong_rows = []
+            for key, rnums in rows_found.items():
+                if key != expected:
+                    wrong_rows.extend(rnums)
+            correct_rows = rows_found.get(expected, [])
+            if wrong_rows:
+                for rnum in wrong_rows:
+                    consist_issues_by_row.setdefault(rnum, []).append({
+                        "rule": "Consistency",
+                        "severity": imp,
+                        "detail": (
+                            f"'{term}' ต้องแปลว่า '{expected}' เหมือนกันทุกแถว "
+                            f"(แถวที่ถูก: {correct_rows if correct_rows else 'ไม่มี'})"
+                        ),
+                    })
+        else:
+            # ไม่มี expected → ตรวจว่าแปลเหมือนกันทั้งหมดไหม
+            if len(unique_keys) > 1:
+                # หา majority (ใช้บ่อยสุด = "ถูก")
+                majority_key = max(unique_keys, key=lambda k: len(rows_found[k]))
+                summary = "; ".join(
+                    f'"{k[:40]}" (แถว {rows_found[k]})'
+                    for k in unique_keys if k != majority_key
+                )
+                for key, rnums in rows_found.items():
+                    if key == majority_key:
+                        continue
+                    for rnum in rnums:
+                        consist_issues_by_row.setdefault(rnum, []).append({
+                            "rule": "Consistency",
+                            "severity": imp,
+                            "detail": f"'{term}' ถูกแปลต่างกันในหลายแถว — แถวนี้ใช้: \"{key[:50]}\" ขณะที่แถวอื่นใช้: \"{majority_key[:50]}\"",
+                        })
+
+    for idx, row in df.iterrows():
+        src = str(row[src_col]) if pd.notna(row[src_col]) else ""
+        tgt = str(row[tgt_col]) if pd.notna(row[tgt_col]) else ""
+        issues = []
+
+        # เพิ่ม consistency issues ที่คำนวณไว้ล่วงหน้า
+        for ci in consist_issues_by_row.get(idx + 1, []):
+            issues.append(ci)
+
+        # 1. Placeholder
+        if rules.get("placeholders"):
+            sp, tp = set(PH_PAT.findall(src)), set(PH_PAT.findall(tgt))
+            for m in sp - tp:
+                issues.append({"rule":"Placeholder","severity":"Critical",
+                    "detail":f"ตัวแปร {m} หายไปจากคำแปล"})
+            for m in tp - sp:
+                issues.append({"rule":"Placeholder","severity":"Major",
+                    "detail":f"มีตัวแปร {m} เกินมาในคำแปล"})
+
+        # 2. ตัวเลข (รองรับ พ.ศ./ค.ศ.) — ตรวจทั้งหาย และเกินมา
+        if rules.get("numbers"):
+            src_nums = NUM_PAT.findall(src)
+            tgt_nums = NUM_PAT.findall(tgt)
+            for n in numbers_match(src_nums, tgt_nums):
+                issues.append({"rule":"ตัวเลข","severity":"Critical",
+                    "detail":f"ตัวเลขหายไปจากคำแปล: {n}"})
+            # ตรวจตัวเลขที่เกินมาใน target
+            for n in numbers_match(tgt_nums, src_nums):
+                issues.append({"rule":"ตัวเลข","severity":"Major",
+                    "detail":f"มีตัวเลขเพิ่มมาในคำแปล: {n}"})
+
+        # 3. สัญลักษณ์เกิน / หาย
+        if rules.get("extra_symbols"):
+            skip = {'—','–',''',''','"','"','฿','×','·','•','.', ',', '!', '?', ':', ';', '-'}
+            ssym = set(re.findall(r'[^\w\s\u0e00-\u0e7f]', src)) - skip
+            tsym = set(re.findall(r'[^\w\s\u0e00-\u0e7f]', tgt)) - skip
+            extra = tsym - ssym
+            missing_sym = ssym - tsym
+            if extra:
+                issues.append({"rule":"สัญลักษณ์","severity":"Minor",
+                    "detail":f"มีสัญลักษณ์เพิ่มมาในคำแปล: {' '.join(sorted(extra))}"})
+            if missing_sym:
+                issues.append({"rule":"สัญลักษณ์","severity":"Minor",
+                    "detail":f"สัญลักษณ์หายไปจากคำแปล: {' '.join(sorted(missing_sym))}"})
+        # 4. สะกดผิด (EN)
+        if rules.get("spelling_en"):
+            for w in re.findall(r'\b[a-zA-Z]+\b', tgt):
+                if w.lower() in EN_TYPOS:
+                    issues.append({"rule":"Spelling EN","severity":"Minor",
+                        "detail":f"น่าจะสะกดผิด: '{w}' → '{EN_TYPOS[w.lower()]}'"})
+
+        # 5. สะกดผิด (TH)
+        if rules.get("spelling_th") and TH_PAT.search(tgt):
+            for wrong, correct in TH_TYPOS.items():
+                if wrong in tgt:
+                    issues.append({"rule":"Spelling TH","severity":"Minor",
+                        "detail":f"น่าจะสะกดผิด: '{wrong}' → '{correct}'"})
+
+        # 6. Glossary — ตรวจว่าคำศัพท์ที่กำหนดไว้ถูกแปลถูกต้อง
+        if rules.get("glossary_check") and glossary:
+            for g in glossary:
+                term  = g.get("term","").strip()
+                trans = g.get("translation","").strip()
+                imp   = g.get("importance","Major")
+                if not term:
+                    continue
+                # ตรวจว่า term ปรากฏใน source ของแถวนี้
+                if term.lower() in src.lower():
+                    if not trans:
+                        issues.append({"rule":"Glossary","severity":"Minor",
+                            "detail":f"พบคำ '{term}' ใน source แต่ยังไม่ได้กำหนดคำแปลใน Glossary"})
+                    elif trans.lower() not in tgt.lower():
+                        issues.append({"rule":"Glossary","severity":imp,
+                            "detail":f"'{term}' ควรแปลว่า '{trans}' แต่ไม่พบในคำแปล"})
+
+        # 7. เครื่องหมายวรรคตอน (ตรวจทุกรายการที่กำหนดใน Style Guide)
+        if rules.get("punctuation"):
+            tgt_is_thai = bool(TH_PAT.search(tgt))
+            for p in style.get("punctuation",[]):
+                sym   = p["symbol"]
+                sev   = p.get("severity","Minor")
+                ptype = p.get("type","special")
+
+                # เครื่องหมายไวยากรณ์ (. , ! ? : ; -) → ถ้า target เป็นภาษาไทย ข้ามได้
+                if ptype == "grammar" and tgt_is_thai:
+                    continue
+
+                if src.count(sym) > 0 and tgt.count(sym) == 0:
+                    issues.append({"rule":"เครื่องหมาย","severity":sev,
+                        "detail":f"source มีเครื่องหมาย '{sym}' แต่ไม่พบในคำแปล"})
+
+        # 8. ความยาว
+        if rules.get("length_check") and style.get("check_length") and len(src) > 0:
+            ratio = len(tgt) / len(src)
+            if ratio > style.get("max_length_ratio",1.5):
+                issues.append({"rule":"ความยาว","severity":"Minor",
+                    "detail":f"คำแปลยาวกว่าต้นฉบับ {ratio:.1f} เท่า (เกินกว่า {style.get('max_length_ratio',1.5)} เท่า)"})
+            elif ratio < style.get("min_length_ratio",0.5):
+                issues.append({"rule":"ความยาว","severity":"Minor",
+                    "detail":f"คำแปลสั้นกว่าต้นฉบับ {ratio:.1f} เท่า (ต่ำกว่า {style.get('min_length_ratio',0.5)} เท่า)"})
+
+        # 9. Encoding
+        if rules.get("encoding_check") and style.get("check_encoding"):
+            try:
+                tgt.encode(style.get("encoding","UTF-8"))
+            except Exception:
+                issues.append({"rule":"Encoding","severity":"Major",
+                    "detail":f"คำแปลมีตัวอักษรที่ไม่รองรับใน {style.get('encoding','UTF-8')}"})
+
+        # 10. เคาะวรรคซ้ำ (double/multiple spaces) — ตรวจทั้ง source และ target
+        if rules.get("double_space"):
+            if re.search(r'  +', src):
+                issues.append({"rule":"Whitespace","severity":"Minor",
+                    "detail":"ต้นฉบับมีการเคาะวรรคซ้ำ (double space)"})
+            if re.search(r'  +', tgt):
+                issues.append({"rule":"Whitespace","severity":"Minor",
+                    "detail":"คำแปลมีการเคาะวรรคซ้ำ (double space)"})
+
+        # 11. จุดท้ายประโยค EN — ถ้า target เป็นภาษาอังกฤษ ควรจบด้วย . หรือ ? หรือ !
+        if rules.get("en_final_period"):
+            tgt_stripped = tgt.rstrip()
+            tgt_is_thai = bool(TH_PAT.search(tgt))
+            src_is_thai  = bool(TH_PAT.search(src))
+            # ตรวจเฉพาะกรณี target เป็นภาษาอังกฤษ (ไม่มีอักษรไทย)
+            if not tgt_is_thai and tgt_stripped:
+                # source จบด้วย . หรือ ? หรือ !
+                src_ends_punct = bool(re.search(r'[.?!]$', src.rstrip()))
+                tgt_ends_punct = bool(re.search(r'[.?!]$', tgt_stripped))
+                if src_ends_punct and not tgt_ends_punct:
+                    issues.append({"rule":"Full Stop EN","severity":"Minor",
+                        "detail":"ต้นฉบับจบด้วยเครื่องหมาย แต่คำแปล EN ไม่มีเครื่องหมายปิดประโยค (. ? !)"})
+
+        sevs = [i["severity"] for i in issues]
+        status = "Critical" if "Critical" in sevs else "Major" if "Major" in sevs else "Minor" if sevs else "Pass"
+        results.append({"row":idx+1,"source":src,"target":tgt,"status":status,"issues":issues})
+    return results
+
+def calc_stats(results):
+    counts = {"Pass":0,"Minor":0,"Major":0,"Critical":0}
+    for r in results: counts[r["status"]] = counts.get(r["status"],0) + 1
+    return len(results), counts
+
+# ── MQM Scoring ──────────────────────────────────────────────────────────────────
+def count_words(text):
+    """นับคำแบบ rough: split whitespace รองรับทั้ง EN และ TH (TH นับตัวอักษร/5)"""
+    en_words = len(re.findall(r'[a-zA-Z0-9]+', text))
+    th_chars  = len(re.findall(r'[\u0e00-\u0e7f]', text))
+    return en_words + max(1, th_chars // 5)
+
+def calc_mqm(results, weights, thresholds):
+    """
+    คำนวณ MQM score ตามสูตรมาตรฐาน:
+      penalty = Σ (error_count × weight) / total_words × 1000
+      score   = max(0, 100 − penalty)
+    คืนค่า: score (float), grade (str), penalty_detail (dict)
+    """
+    total_words = max(1, sum(count_words(r["source"]) for r in results))
+    penalty_counts = {"Minor": 0, "Major": 0, "Critical": 0}
+    for r in results:
+        for iss in r.get("issues", []):
+            sev = iss.get("severity", "Minor")
+            if sev in penalty_counts:
+                penalty_counts[sev] += 1
+
+    raw_penalty = sum(penalty_counts[s] * weights.get(s, 0) for s in penalty_counts)
+    penalty_per_1k = raw_penalty / total_words * 1000
+    score = max(0.0, 100.0 - penalty_per_1k)
+
+    if score >= thresholds.get("excellent", 90):
+        grade = "Excellent"
+    elif score >= thresholds.get("good", 75):
+        grade = "Good"
+    elif score >= thresholds.get("acceptable", 60):
+        grade = "Acceptable"
+    else:
+        grade = "Rejected"
+
+    return score, grade, penalty_counts, total_words, penalty_per_1k
+
+MQM_GRADE_COLOR = {
+    "Excellent": "#2e7d32",
+    "Good":      "#558b2f",
+    "Acceptable":"#f57c00",
+    "Rejected":  "#c62828",
+}
+MQM_GRADE_BG = {
+    "Excellent": "#e8f5e9",
+    "Good":      "#f1f8e9",
+    "Acceptable":"#fff8e1",
+    "Rejected":  "#fce4ec",
+}
+MQM_GRADE_TH = {
+    "Excellent": "ดีเยี่ยม",
+    "Good":      "ดี",
+    "Acceptable":"พอใช้ได้",
+    "Rejected":  "ไม่ผ่าน",
+}
+
+def build_export_df(results, weights=None):
+    w = weights or {"Minor":1,"Major":5,"Critical":25}
+    rows = []
+    for r in results:
+        issues = r["issues"] if r["issues"] else [{"rule":"—","severity":"Pass","detail":"ไม่พบปัญหา"}]
+        row_penalty = sum(w.get(iss.get("severity","Minor"), 0) for iss in r["issues"]) if r["issues"] else 0
+        for iss in issues:
+            rows.append({
+                "#": r["row"], "Source": r["source"], "Target": r["target"],
+                "Status": r["status"],
+                "Rule": iss.get("rule","—"),
+                "ระดับ": iss.get("severity","Pass"),
+                "รายละเอียด": iss.get("detail",""),
+                "MQM Penalty (แถว)": row_penalty,
+            })
+    return pd.DataFrame(rows)
+
+# ── Header ───────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="app-header">
+  <div class="app-header-badge">🔍</div>
+  <div>
+    <div class="app-header-title">TransQA Studio</div>
+    <div class="app-header-sub">Translation Quality Assurance · ระบบตรวจสอบคุณภาพงานแปล</div>
+  </div>
+  <div class="app-header-ver">v2.0</div>
+</div>
+""", unsafe_allow_html=True)
+
+tab_qa, tab_glossary, tab_style, tab_history = st.tabs([
+    "🔍  ตรวจสอบ QA", "📚  Glossary", "📐  Style Guide", "🕘  ประวัติ"
+])
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 1 — QA CHECK
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_qa:
+    st.markdown('<div class="sec-title">📂 อัปโหลดไฟล์</div>', unsafe_allow_html=True)
+    uploaded = st.file_uploader("รองรับไฟล์ CSV, XLSX, TXT", type=["csv","xlsx","xls","txt"], key="qa_upload")
+
+    if uploaded:
+        st.session_state["current_file"] = uploaded.name
+        st.markdown(f'<div class="file-info">📄 {uploaded.name}</div>', unsafe_allow_html=True)
+        try:
+            sg_enc = st.session_state.get("style_guide", {}).get("encoding", "utf-8-sig")
+            # normalize encoding name สำหรับ pandas
+            enc_map = {"UTF-8": "utf-8-sig", "UTF-16": "utf-16",
+                       "TIS-620": "tis-620", "ISO-8859-1": "iso-8859-1", "Windows-1252": "cp1252"}
+            read_enc = enc_map.get(sg_enc, "utf-8-sig")
+            if uploaded.name.endswith(".csv"):
+                try:
+                    df_raw = pd.read_csv(uploaded, encoding=read_enc)
+                except UnicodeDecodeError:
+                    uploaded.seek(0)
+                    df_raw = pd.read_csv(uploaded, encoding="utf-8")
+            elif uploaded.name.endswith((".xlsx",".xls")):
+                df_raw = pd.read_excel(uploaded)
+            else:
+                raw_bytes = uploaded.read()
+                for enc in [read_enc, "utf-8", "tis-620", "cp874"]:
+                    try:
+                        lines = raw_bytes.decode(enc).strip().split("\n")
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    lines = raw_bytes.decode("utf-8", errors="replace").strip().split("\n")
+                # รองรับ TXT แบบ tab-separated (source\ttarget)
+                if lines and "\t" in lines[0]:
+                    parts = [ln.split("\t", 1) for ln in lines]
+                    df_raw = pd.DataFrame({"source": [p[0] for p in parts],
+                                           "target": [p[1] if len(p) > 1 else "" for p in parts]})
+                else:
+                    df_raw = pd.DataFrame({"source": lines})
+            st.session_state["df_raw"] = df_raw
+
+            cols = list(df_raw.columns)
+            uc1, uc2 = st.columns(2)
+            with uc1:
+                src_def = next((c for c in cols if any(k in c.lower() for k in ["source","src","en","ต้นฉบับ"])), cols[0])
+                st.session_state["source_col"] = st.selectbox("เลือกคอลัมน์ต้นฉบับ (Source)", cols, index=cols.index(src_def))
+            with uc2:
+                tgt_def = next((c for c in cols if any(k in c.lower() for k in ["target","tgt","th","แปล"])), cols[min(1,len(cols)-1)])
+                st.session_state["target_col"] = st.selectbox("เลือกคอลัมน์คำแปล (Target)", cols, index=cols.index(tgt_def))
+
+            st.caption(f"ตัวอย่างข้อมูล 3 แถวแรก (ทั้งหมด {len(df_raw)} แถว)")
+            st.dataframe(df_raw.head(3), use_container_width=True, hide_index=True)
+        except Exception as e:
+            st.error(f"ไม่สามารถโหลดไฟล์ได้: {e}")
+
+    st.markdown('<div class="sec-title">⚙️ เลือกกฎที่ต้องการตรวจ</div>', unsafe_allow_html=True)
+    rules = st.session_state["qa_rules"]
+    rc1, rc2, rc3 = st.columns(3)
+    with rc1:
+        rules["placeholders"]       = st.toggle("ตรวจ Placeholder (ตัวแปร)",    rules["placeholders"])
+        rules["numbers"]            = st.toggle("ตรวจตัวเลขและข้อมูลเฉพาะ",      rules["numbers"])
+        rules["extra_symbols"]      = st.toggle("ตรวจสัญลักษณ์ที่เพิ่มขึ้น",     rules["extra_symbols"])
+    with rc2:
+        rules["spelling_en"]        = st.toggle("ตรวจสะกดคำภาษาอังกฤษ",          rules["spelling_en"])
+        rules["spelling_th"]        = st.toggle("ตรวจสะกดคำภาษาไทย",             rules["spelling_th"])
+        rules["glossary_check"]     = st.toggle("ตรวจตามรายการ Glossary",         rules["glossary_check"])
+    with rc3:
+        rules["punctuation"]        = st.toggle("ตรวจเครื่องหมายวรรคตอน",        rules["punctuation"])
+        rules["length_check"]       = st.toggle("ตรวจความยาวของคำแปล",           rules["length_check"])
+        rules["encoding_check"]     = st.toggle("ตรวจ Encoding และ Font",         rules["encoding_check"])
+        rules["double_space"]       = st.toggle("ตรวจการเคาะวรรคซ้ำ",            rules.get("double_space", True))
+        rules["en_final_period"]    = st.toggle("ตรวจจุดท้ายประโยค (EN)",        rules.get("en_final_period", True))
+    rules["consistency_check"]  = st.toggle(
+        "🔒 ตรวจความสม่ำเสมอของคำแปล (Consistency) — ตรวจว่าคำที่กำหนดใน Glossary ถูกแปลเหมือนกันทุกแถว",
+        rules.get("consistency_check", True)
+    )
+
+    st.write("")
+    g_count      = len(st.session_state["glossary"])
+    g_consist_ct = sum(1 for g in st.session_state["glossary"] if g.get("enforce_consistency"))
+    if g_count > 0:
+        consist_note = f" · 🔒 {g_consist_ct} คำบังคับ Consistency" if g_consist_ct else ""
+        st.caption(f"📚 Glossary พร้อมใช้งาน {g_count} คำ{consist_note} — เปิดสวิตช์ 'ตรวจตามรายการ Glossary' เพื่อเริ่มตรวจ")
+    else:
+        st.caption("📚 ยังไม่มี Glossary — ไปเพิ่มคำได้ที่แท็บ Glossary")
+
+    if st.button("▶  เริ่มตรวจสอบ", disabled=("df_raw" not in st.session_state)):
+        with st.spinner("กำลังตรวจสอบ กรุณารอสักครู่…"):
+            rules_snap    = dict(st.session_state["qa_rules"])
+            glossary_snap = [dict(g) for g in st.session_state["glossary"]]
+            style_snap    = dict(st.session_state["style_guide"])
+
+            results = run_qa(
+                st.session_state["df_raw"],
+                st.session_state["source_col"],
+                st.session_state["target_col"],
+                rules_snap, glossary_snap, style_snap,
+            )
+            st.session_state["qa_results"] = results
+            total, counts = calc_stats(results)
+            mqm_w_snap  = dict(st.session_state.get("mqm_weights", {"Minor":1,"Major":5,"Critical":25}))
+            mqm_th_snap = dict(st.session_state.get("mqm_threshold", {"excellent":90,"good":75,"acceptable":60}))
+            mqm_score_h, mqm_grade_h, _, _, _ = calc_mqm(results, mqm_w_snap, mqm_th_snap)
+            # ป้องกัน history ซ้ำ: ตรวจว่า session เดิมมีแล้วหรือยัง
+            ts_now = datetime.now().strftime("%Y-%m-%d %H:%M")
+            fname_now = st.session_state.get("current_file","—")
+            already = any(
+                h["timestamp"] == ts_now and h["filename"] == fname_now
+                for h in st.session_state["history"]
+            )
+            if not already:
+                st.session_state["history"].append({
+                    "timestamp": ts_now,
+                    "filename":  fname_now,
+                    "total": total, "counts": counts, "results": results,
+                    "mqm_score": mqm_score_h, "mqm_grade": mqm_grade_h,
+                })
+        st.success(f"ตรวจสอบเสร็จแล้ว พบ {total} แถว")
+
+    # ── Results ──────────────────────────────────────────────────────────────────
+    results = st.session_state.get("qa_results", [])
+    if results:
+        total, counts = calc_stats(results)
+
+        components.html(f"""
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root {{
+    --bg:#FFFFFF; --bg-s:#F7F5F0; --bd:#E4DDD3; --bd-med:#C8BFB2;
+    --t1:#1C1917; --t2:#57534E; --t3:#A8A29E;
+    --pass:#16A34A; --pass-bg:#F0FDF4; --pass-bd:#BBF7D0;
+    --minor:#D97706; --minor-bg:#FFFBEB; --minor-bd:#FDE68A;
+    --major:#EA580C; --major-bg:#FFF7ED; --major-bd:#FDBA74;
+    --crit:#DC2626;  --crit-bg:#FEF2F2;  --crit-bd:#FECACA;
+    --r:10px; --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --shadow-h:0 4px 12px rgba(0,0,0,.1),0 2px 4px rgba(0,0,0,.05);
+  }}
+  * {{ box-sizing:border-box; margin:0; padding:0; }}
+  body {{ font-family:'IBM Plex Sans Thai',sans-serif; background:transparent; color:var(--t1); }}
+  .row {{ display:flex; gap:8px; flex-wrap:wrap; }}
+  .box {{
+    flex:1; min-width:80px; background:var(--bg);
+    border:1px solid var(--bd); border-radius:var(--r);
+    padding:0.95rem 0.7rem; text-align:center;
+    box-shadow:var(--shadow); position:relative;
+    transition:transform .15s,box-shadow .15s,border-color .15s;
+  }}
+  .box.click {{ cursor:pointer; }}
+  .box.click:hover {{ transform:translateY(-2px); box-shadow:var(--shadow-h); }}
+  .box.click:hover .hint {{ opacity:1; }}
+  .hint {{ position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+    font-size:0.6rem; color:var(--t3); opacity:0; transition:opacity .15s;
+    white-space:nowrap; letter-spacing:.04em; text-transform:uppercase; }}
+  .num {{ font-size:2rem; font-weight:700; line-height:1; letter-spacing:-0.03em; }}
+  .lbl {{ font-size:0.65rem; font-weight:600; color:var(--t3); margin-top:5px;
+    text-transform:uppercase; letter-spacing:.08em; }}
+  .box-tot .num {{ color:var(--t1); }}
+  .box-pass  {{ border-color:var(--pass-bd);  }} .box-pass  .num {{ color:var(--pass);  }}
+  .box-minor {{ border-color:var(--minor-bd); }} .box-minor .num {{ color:var(--minor); }}
+  .box-major {{ border-color:var(--major-bd); }} .box-major .num {{ color:var(--major); }}
+  .box-crit  {{ border-color:var(--crit-bd);  }} .box-crit  .num {{ color:var(--crit);  }}
+
+  /* popup */
+  .pop {{ display:none; margin-top:10px; background:var(--bg); border:1px solid var(--bd);
+    border-radius:var(--r); padding:1.1rem 1.3rem; box-shadow:var(--shadow-h);
+    position:relative; animation:fade .14s ease; }}
+  .pop.open {{ display:block; }}
+  @keyframes fade {{ from{{transform:translateY(-5px);opacity:0}} to{{transform:translateY(0);opacity:1}} }}
+  .x {{ position:absolute; top:10px; right:12px; background:none; border:none;
+    font-size:0.85rem; cursor:pointer; color:var(--t3); padding:3px 6px;
+    border-radius:4px; transition:background .1s,color .1s; line-height:1; }}
+  .x:hover {{ background:var(--bg-s); color:var(--t1); }}
+  .p-title {{ font-size:1rem; font-weight:700; margin-bottom:2px; }}
+  .p-sub   {{ font-size:0.68rem; font-weight:600; text-transform:uppercase;
+    letter-spacing:.07em; opacity:.6; margin-bottom:0.7rem; }}
+  .p-desc  {{ font-size:0.87rem; color:var(--t2); line-height:1.65; margin-bottom:0.7rem; }}
+  .p-q     {{ font-size:0.82rem; background:var(--bg-s); border-radius:6px;
+    padding:.5rem .85rem; color:var(--t2); border-left:2.5px solid; margin-bottom:0.7rem; }}
+  .p-q strong {{ color:var(--t1); }}
+  .tags {{ display:flex; flex-wrap:wrap; gap:5px; }}
+  .tag  {{ font-size:0.72rem; padding:3px 9px; border-radius:20px; border:1px solid; font-weight:500; }}
+</style></head><body>
+<div class="row">
+  <div class="box box-tot">
+    <div class="num">{total}</div><div class="lbl">ทั้งหมด</div>
+  </div>
+  <div class="box box-pass click" onclick="op('pass')">
+    <div class="num">{counts.get('Pass',0)}</div><div class="lbl">ผ่าน</div>
+    <div class="hint">คลิกดูรายละเอียด</div>
+  </div>
+  <div class="box box-minor click" onclick="op('minor')">
+    <div class="num">{counts.get('Minor',0)}</div><div class="lbl">Minor</div>
+    <div class="hint">คลิกดูรายละเอียด</div>
+  </div>
+  <div class="box box-major click" onclick="op('major')">
+    <div class="num">{counts.get('Major',0)}</div><div class="lbl">Major</div>
+    <div class="hint">คลิกดูรายละเอียด</div>
+  </div>
+  <div class="box box-crit click" onclick="op('crit')">
+    <div class="num">{counts.get('Critical',0)}</div><div class="lbl">Critical</div>
+    <div class="hint">คลิกดูรายละเอียด</div>
+  </div>
+</div>
+<div class="pop" id="pop">
+  <button class="x" onclick="cl()">✕</button>
+  <div class="p-title" id="pT"></div>
+  <div class="p-sub"   id="pS"></div>
+  <div class="p-desc"  id="pD"></div>
+  <div class="p-q"     id="pQ"></div>
+  <div class="tags"    id="pTg"></div>
+</div>
+<script>
+var D={{
+  pass:{{title:"✅ Pass — ผ่านแล้ว",sub:"ไม่พบข้อผิดพลาด",color:"#16A34A",
+    desc:"แถวที่ไม่พบข้อผิดพลาดใดๆ หรือยอมรับได้ตามเกณฑ์โปรเจกต์",
+    q:"ยอมรับได้ตามเกณฑ์โปรเจกต์?",
+    tags:["ความหมายถูกต้อง","ภาษาเป็นธรรมชาติ","Glossary ตรงกัน"],
+    tc:"#F0FDF4",tx:"#15803D",tb:"#BBF7D0"}},
+  minor:{{title:"🟡 Minor — เล็กน้อย",sub:"แก้ได้ในรอบถัดไป",color:"#D97706",
+    desc:"ความหมายยังถูกต้อง แต่คุณภาพภาษาไม่ดีพอ อาจไม่สอดคล้องกับ style guide",
+    q:"ความหมายถูก แต่ดูไม่ professional?",
+    tags:["สะกดผิด","เครื่องหมายไม่สอดคล้อง","ความยาวผิดสัดส่วน","Inconsistency เล็กน้อย"],
+    tc:"#FFFBEB",tx:"#92400E",tb:"#FDE68A"}},
+  major:{{title:"🟠 Major — สำคัญ",sub:"ต้องแก้ก่อน publish",color:"#EA580C",
+    desc:"ความหมายเปลี่ยนไปบางส่วน ผู้อ่านอาจเข้าใจผิดได้",
+    q:"ผู้อ่านจะเข้าใจผิดไหม?",
+    tags:["Glossary ผิด","ละเว้น clause สำคัญ","โครงสร้างผิด","ตัวเลขไม่ตรง"],
+    tc:"#FFF7ED",tx:"#9A3412",tb:"#FDBA74"}},
+  crit:{{title:"🔴 Critical — ร้ายแรง",sub:"ห้ามปล่อยผ่าน",color:"#DC2626",
+    desc:"ความหมายเปลี่ยนไปจนตรงข้าม หรืออาจก่อความเสียหายร้ายแรง",
+    q:"ถ้าปล่อยผ่านจะเกิดความเสียหายไหม?",
+    tags:["ตัวแปรหาย","ความหมายตรงข้าม","ไม่ได้แปล","ตัวเลขสำคัญหาย"],
+    tc:"#FEF2F2",tx:"#991B1B",tb:"#FECACA"}}
+}};
+var cur=null;
+function op(k){{
+  if(cur===k){{cl();return;}}
+  cur=k; var d=D[k],p=document.getElementById('pop');
+  document.getElementById('pT').textContent=d.title;
+  document.getElementById('pT').style.color=d.color;
+  document.getElementById('pS').textContent=d.sub;
+  document.getElementById('pS').style.color=d.color;
+  document.getElementById('pD').textContent=d.desc;
+  document.getElementById('pQ').innerHTML='<strong>ถามตัวเองว่า:</strong> '+d.q;
+  document.getElementById('pQ').style.borderColor=d.color;
+  document.getElementById('pTg').innerHTML=d.tags.map(function(t){{
+    return '<span class="tag" style="background:'+d.tc+';color:'+d.tx+';border-color:'+d.tb+'">'+t+'</span>';
+  }}).join('');
+  p.classList.remove('open'); void p.offsetWidth; p.classList.add('open');
+}}
+function cl(){{cur=null;document.getElementById('pop').classList.remove('open');}}
+document.addEventListener('keydown',function(e){{if(e.key==='Escape')cl();}});
+</script></body></html>""", height=275, scrolling=False)
+
+
+        pass_pct = counts.get("Pass",0) / total if total else 0
+        st.progress(pass_pct, text=f"อัตราผ่าน: {pass_pct*100:.1f}%")
+
+        # ── MQM Score ────────────────────────────────────────────────────────────
+        mqm_w  = st.session_state.get("mqm_weights", {"Minor":1,"Major":5,"Critical":25})
+        mqm_th = st.session_state.get("mqm_threshold", {"excellent":90,"good":75,"acceptable":60})
+        mqm_score, mqm_grade, mqm_penalty_counts, mqm_words, mqm_penalty_per1k = calc_mqm(results, mqm_w, mqm_th)
+        gc = MQM_GRADE_COLOR[mqm_grade]
+        gb = MQM_GRADE_BG[mqm_grade]
+        gth = MQM_GRADE_TH[mqm_grade]
+
+        # gauge bar fill
+        gauge_pct = mqm_score / 100
+        gauge_color = gc
+
+        components.html(f"""
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+  *{{box-sizing:border-box;margin:0;padding:0;}}
+  body{{font-family:'IBM Plex Sans Thai',sans-serif;background:transparent;color:#1C1917;}}
+  .wrap{{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;}}
+  .score-box{{
+    background:{gb};border:1.5px solid {gc};border-radius:12px;
+    padding:1.2rem 1.8rem;min-width:170px;text-align:center;flex-shrink:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  }}
+  .score-num{{font-size:3rem;font-weight:700;color:{gc};line-height:1;letter-spacing:-0.04em;font-family:'IBM Plex Mono',monospace;}}
+  .score-lbl{{font-size:0.62rem;font-weight:600;color:{gc};text-transform:uppercase;letter-spacing:.1em;opacity:.7;}}
+  .score-grade{{font-size:0.92rem;font-weight:600;color:{gc};margin-top:4px;}}
+  .gauge-bg{{background:rgba(0,0,0,.1);border-radius:4px;height:5px;width:100%;overflow:hidden;margin-top:8px;}}
+  .gauge-fill{{height:5px;border-radius:4px;background:{gc};width:{gauge_pct*100:.1f}%;}}
+  .detail{{flex:1;background:#FFFFFF;border:1px solid #E4DDD3;border-radius:12px;padding:1rem 1.3rem;min-width:240px;}}
+  .d-title{{font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#A8A29E;margin-bottom:0.8rem;}}
+  .d-row{{display:flex;justify-content:space-between;align-items:center;padding:0.32rem 0;border-bottom:1px solid #F2EFE9;font-size:0.85rem;}}
+  .d-row:last-child{{border-bottom:none;}}
+  .d-lbl{{color:#57534E;}}
+  .d-val{{font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;}}
+  .formula{{font-size:0.72rem;color:#A8A29E;margin-top:0.6rem;line-height:1.6;padding-top:0.5rem;border-top:1px solid #F2EFE9;}}
+</style></head><body>
+<div class="wrap">
+  <div class="score-box">
+    <div class="score-lbl">MQM Score</div>
+    <div class="score-num">{mqm_score:.1f}</div>
+    <div class="score-grade">{'⭐' if mqm_grade=='Excellent' else '✅' if mqm_grade=='Good' else '⚠️' if mqm_grade=='Acceptable' else '❌'} {gth}</div>
+    <div class="gauge-bg"><div class="gauge-fill"></div></div>
+  </div>
+  <div class="detail">
+    <div class="d-title">รายละเอียดคะแนน</div>
+    <div class="d-row">
+      <span class="d-lbl">🟡 Minor × {mqm_w.get('Minor',1)} pts</span>
+      <span class="d-val" style="color:#D97706">{mqm_penalty_counts['Minor']} errors = {mqm_penalty_counts['Minor']*mqm_w.get('Minor',1)} pts</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">🟠 Major × {mqm_w.get('Major',5)} pts</span>
+      <span class="d-val" style="color:#EA580C">{mqm_penalty_counts['Major']} errors = {mqm_penalty_counts['Major']*mqm_w.get('Major',5)} pts</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">🔴 Critical × {mqm_w.get('Critical',25)} pts</span>
+      <span class="d-val" style="color:#DC2626">{mqm_penalty_counts['Critical']} errors = {mqm_penalty_counts['Critical']*mqm_w.get('Critical',25)} pts</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">จำนวนคำโดยประมาณ</span>
+      <span class="d-val">{mqm_words:,} words</span>
+    </div>
+    <div class="d-row">
+      <span class="d-lbl">Penalty / 1,000 words</span>
+      <span class="d-val">{mqm_penalty_per1k:.2f} pts</span>
+    </div>
+    <div class="formula">
+      score = 100 − (Σ penalty ÷ words × 1,000) &nbsp;·&nbsp;
+      Excellent ≥ {mqm_th.get('excellent',90)} · Good ≥ {mqm_th.get('good',75)} · Acceptable ≥ {mqm_th.get('acceptable',60)}
+    </div>
+  </div>
+</div>
+</body></html>""", height=200, scrolling=False)
+
+        st.markdown('<div class="sec-title">กรองตามระดับความรุนแรง</div>', unsafe_allow_html=True)
+        filter_sev = st.multiselect(
+            "ระดับ", ["Critical","Major","Minor","Pass"],
+            default=["Critical","Major","Minor"],
+            label_visibility="collapsed",
+        )
+
+        # Export
+        exp_df = build_export_df(results, st.session_state.get("mqm_weights"))
+        ec1, ec2, _ = st.columns([1.2, 1.2, 4])
+        with ec1:
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine="openpyxl") as w:
+                exp_df.to_excel(w, index=False, sheet_name="QA Results")
+            st.download_button("⬇ ดาวน์โหลด Excel", buf.getvalue(),
+                file_name=f"qa_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True)
+        with ec2:
+            st.download_button("⬇ ดาวน์โหลด CSV", exp_df.to_csv(index=False).encode("utf-8-sig"),
+                file_name=f"qa_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                mime="text/csv", use_container_width=True)
+
+        # Build table rows — แสดงข้อความเต็ม ไม่ตัด
+        filtered = [r for r in results if r["status"] in filter_sev]
+        flat_rows = []
+        for r in filtered:
+            if r["issues"]:
+                for iss in r["issues"]:
+                    flat_rows.append({
+                        "row": r["row"],
+                        "source": r["source"],   # ← เต็ม ไม่ตัด
+                        "target": r["target"],   # ← เต็ม ไม่ตัด
+                        "rule": iss["rule"],
+                        "severity": iss["severity"],
+                        "detail": iss["detail"],
+                    })
+            else:
+                flat_rows.append({
+                    "row": r["row"], "source": r["source"], "target": r["target"],
+                    "rule": "—", "severity": "Pass", "detail": "ไม่พบปัญหา",
+                })
+
+        if flat_rows:
+            rows_html = ""
+            for fr in flat_rows:
+                sc = SEV_CLASS.get(fr["severity"], "sev-minor")
+                em = SEV_EMOJI.get(fr["severity"], "🟡")
+                src_safe = fr["source"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                tgt_safe = fr["target"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                rule_safe = fr["rule"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                detail_safe = fr["detail"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                rows_html += f"""
+                <tr>
+                  <td class="td-num">{fr['row']}</td>
+                  <td class="td-text">{src_safe}</td>
+                  <td class="td-text">{tgt_safe}</td>
+                  <td><span class="td-rule">{rule_safe}</span></td>
+                  <td class="sev-cell {sc}"><span class="sev-badge">{em} {fr['severity']}</span></td>
+                  <td class="td-detail">{detail_safe}</td>
+                </tr>"""
+
+            st.markdown(f"""
+            <table class="qa-table">
+              <thead><tr>
+                <th>#</th>
+                <th>ต้นฉบับ (Source)</th>
+                <th>คำแปล (Target)</th>
+                <th>กฎที่ตรวจ</th>
+                <th>ระดับ</th>
+                <th>รายละเอียด</th>
+              </tr></thead>
+              <tbody>{rows_html}</tbody>
+            </table>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("ไม่มีแถวที่ตรงกับระดับที่เลือก")
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 2 — GLOSSARY
+# ════════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 2 — GLOSSARY
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_glossary:
+
+    # ── Header row: title + action buttons ───────────────────────────────────
+    g_hcol1, g_hcol2 = st.columns([3, 2])
+    with g_hcol1:
+        st.markdown("""
+        <div style="margin-bottom:0.2rem;">
+          <div style="font-size:1.35rem;font-weight:700;color:var(--text-1,#1C1917);letter-spacing:-0.02em;">จัดการ Glossary</div>
+          <div style="font-size:0.8rem;color:var(--text-3,#A8A29E);margin-top:2px;">รองรับ .xlsx · .xliff · .tmx · .csv</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with g_hcol2:
+        # Export button — right-aligned
+        if st.session_state["glossary"]:
+            gexp_df = pd.DataFrame(st.session_state["glossary"])
+            gl_c1, gl_c2 = st.columns(2)
+            with gl_c1:
+                st.download_button(
+                    "⬇ Export Glossary CSV",
+                    gexp_df.to_csv(index=False).encode("utf-8-sig"),
+                    file_name="glossary.csv", mime="text/csv",
+                    use_container_width=True,
+                )
+            with gl_c2:
+                if st.button("🗑 ล้างทั้งหมด", use_container_width=True):
+                    st.session_state["glossary"] = []; st.rerun()
+
+    # ── Import Glossary ───────────────────────────────────────────────────────
+    st.markdown('<div class="sec-title">Import Glossary</div>', unsafe_allow_html=True)
+    gfile = st.file_uploader(
+        "เลือกไฟล์ CSV หรือ XLSX",
+        type=["csv","xlsx"], key="g_import",
+        label_visibility="collapsed",
+    )
+    if gfile:
+        try:
+            gdf = pd.read_csv(gfile, encoding="utf-8-sig") if gfile.name.endswith(".csv") else pd.read_excel(gfile)
+            gdf.columns = [c.lower().strip() for c in gdf.columns]
+            added = 0
+            for _, row2 in gdf.iterrows():
+                entry = {
+                    "term":        str(row2.get("term", row2.iloc[0])),
+                    "translation": str(row2.get("translation", row2.iloc[1] if len(row2)>1 else "")),
+                    "importance":  str(row2.get("importance","Major")),
+                    "notes":       str(row2.get("notes","")),
+                    "enforce_consistency": str(row2.get("enforce_consistency","False")).strip().lower() in ("true","1","yes","ใช่"),
+                }
+                if entry["term"] and entry["term"] != "nan":
+                    st.session_state["glossary"].append(entry); added += 1
+            st.success(f"นำเข้า {added} รายการจาก {gfile.name} สำเร็จ")
+            st.rerun()
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาด: {e}")
+
+    # ── Add new row inline ────────────────────────────────────────────────────
+    st.markdown('<div class="sec-title">เพิ่มคำศัพท์ใหม่</div>', unsafe_allow_html=True)
+    na1, na2, na3, na4, na5 = st.columns([2.5, 2.5, 1.4, 2.5, 1])
+    with na1: g_term  = st.text_input("Source term", key="g_term",  placeholder="Invoice", label_visibility="visible")
+    with na2: g_trans = st.text_input("Target term", key="g_trans", placeholder="ใบแจ้งหนี้", label_visibility="visible")
+    with na3: g_imp   = st.selectbox("ระดับ", ["Critical","Major","Minor"], key="g_imp", label_visibility="visible")
+    with na4: g_notes = st.text_input("หมายเหตุ", key="g_notes", placeholder="บริบท / หมายเหตุ", label_visibility="visible")
+    with na5:
+        st.markdown('<div style="padding-top:1.7rem">', unsafe_allow_html=True)
+        add_btn = st.button("＋ เพิ่ม", key="g_add", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if add_btn:
+        if g_term.strip():
+            st.session_state["glossary"].append({
+                "term": g_term.strip(), "translation": g_trans.strip(),
+                "importance": g_imp, "notes": g_notes.strip(),
+                "enforce_consistency": False,
+            })
+            st.rerun()
+        else:
+            st.warning("กรุณาใส่ Source term ก่อน")
+
+    # ── Data Grid ─────────────────────────────────────────────────────────────
+    glossary = st.session_state["glossary"]
+    total_g  = len(glossary)
+
+    if total_g == 0:
+        st.markdown("""
+        <div style="text-align:center;padding:3rem 1rem;color:var(--text-3,#A8A29E);
+          border:1.5px dashed var(--border,#E4DDD3);border-radius:12px;margin-top:1rem;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">📖</div>
+          <div style="font-weight:600;font-size:0.95rem;">ยังไม่มีคำใน Glossary</div>
+          <div style="font-size:0.82rem;margin-top:4px;">เพิ่มคำด้านบน หรือ Import จากไฟล์ CSV/XLSX</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # search + count bar
+        sg_row1, sg_row2 = st.columns([3, 1])
+        with sg_row1:
+            search_g = st.text_input("", key="g_search",
+                placeholder="🔍  ค้นหา Source term หรือ Target term…",
+                label_visibility="collapsed")
+        with sg_row2:
+            st.markdown(f"""
+            <div style="text-align:right;padding-top:0.5rem;font-size:0.82rem;color:var(--text-3,#A8A29E);">
+              {total_g} รายการ
+            </div>""", unsafe_allow_html=True)
+
+        # filter
+        indexed_g = [dict(g, _idx=i) for i, g in enumerate(glossary)]
+        if search_g:
+            s = search_g.lower()
+            indexed_g = [g for g in indexed_g if s in g["term"].lower() or s in g["translation"].lower()]
+
+        IMP_COLOR = {"Critical": ("#DC2626","#FEF2F2","#FECACA"),
+                     "Major":    ("#EA580C","#FFF7ED","#FDBA74"),
+                     "Minor":    ("#D97706","#FFFBEB","#FDE68A")}
+
+        # ── table header ────────────────────────────────────────
+        st.markdown("""
+        <div style="display:grid;grid-template-columns:2fr 2fr 1.2fr 2fr 0.5fr;
+          gap:0;border:1px solid var(--border,#E4DDD3);border-radius:10px 10px 0 0;
+          background:var(--bg-subtle,#F2EFE9);overflow:hidden;">
+          <div style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;
+            text-transform:uppercase;letter-spacing:.08em;color:var(--text-3,#A8A29E);
+            border-right:1px solid var(--border,#E4DDD3);">Source term</div>
+          <div style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;
+            text-transform:uppercase;letter-spacing:.08em;color:var(--text-3,#A8A29E);
+            border-right:1px solid var(--border,#E4DDD3);">Target term</div>
+          <div style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;
+            text-transform:uppercase;letter-spacing:.08em;color:var(--text-3,#A8A29E);
+            border-right:1px solid var(--border,#E4DDD3);">ระดับ</div>
+          <div style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;
+            text-transform:uppercase;letter-spacing:.08em;color:var(--text-3,#A8A29E);
+            border-right:1px solid var(--border,#E4DDD3);">หมายเหตุ</div>
+          <div style="padding:0.6rem 1rem;"></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── table rows ──────────────────────────────────────────
+        # Use a container with no gap between rows
+        for row_i, g in enumerate(indexed_g):
+            real_idx = g["_idx"]
+            imp      = g.get("importance","Major")
+            tc, tbg, tbd = IMP_COLOR.get(imp, IMP_COLOR["Major"])
+            lock_icon = " 🔒" if g.get("enforce_consistency") else ""
+            is_last   = (row_i == len(indexed_g) - 1)
+            border_r  = "0 0 10px 10px" if is_last else "0"
+
+            # Each row rendered as columns (Streamlit native for interactivity)
+            rc1, rc2, rc3, rc4, rc5 = st.columns([2, 2, 1.2, 2, 0.5])
+            with rc1:
+                new_term = st.text_input(
+                    "", value=g["term"], key=f"gt_{real_idx}",
+                    label_visibility="collapsed",
+                )
+                if new_term != g["term"]:
+                    st.session_state["glossary"][real_idx]["term"] = new_term
+            with rc2:
+                new_trans = st.text_input(
+                    "", value=g["translation"], key=f"gtr_{real_idx}",
+                    label_visibility="collapsed",
+                )
+                if new_trans != g["translation"]:
+                    st.session_state["glossary"][real_idx]["translation"] = new_trans
+            with rc3:
+                new_imp = st.selectbox(
+                    "", ["Critical","Major","Minor"],
+                    index=["Critical","Major","Minor"].index(imp),
+                    key=f"gi_{real_idx}",
+                    label_visibility="collapsed",
+                )
+                if new_imp != imp:
+                    st.session_state["glossary"][real_idx]["importance"] = new_imp
+            with rc4:
+                new_notes = st.text_input(
+                    "", value=g.get("notes",""), key=f"gn_{real_idx}",
+                    label_visibility="collapsed",
+                )
+                if new_notes != g.get("notes",""):
+                    st.session_state["glossary"][real_idx]["notes"] = new_notes
+            with rc5:
+                if st.button("✕", key=f"gd_{real_idx}", help="ลบรายการนี้"):
+                    st.session_state["glossary"].pop(real_idx); st.rerun()
+
+        # ── footer: save reminder ────────────────────────────────
+        st.markdown(f"""
+        <div style="border:1px solid var(--border,#E4DDD3);border-top:none;
+          border-radius:0 0 10px 10px;background:var(--bg-subtle,#F2EFE9);
+          padding:0.55rem 1rem;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.75rem;color:var(--text-3,#A8A29E);">
+            แสดง {len(indexed_g)} จาก {total_g} รายการ{"  · ค้นหา: " + search_g if search_g else ""}
+          </span>
+          <span style="font-size:0.72rem;color:var(--text-3,#A8A29E);">
+            แก้ไขได้โดยตรงในตาราง · การเปลี่ยนแปลงบันทึกอัตโนมัติ
+          </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 3 — STYLE GUIDE
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_style:
+    sg = st.session_state["style_guide"]
+    st.markdown('<div class="sec-title">🔧 ตั้งค่าโปรเจกต์</div>', unsafe_allow_html=True)
+    sc1, sc2, sc3 = st.columns(3)
+
+    enc_opts  = ["UTF-8","UTF-16","TIS-620","ISO-8859-1","Windows-1252"]
+    tone_opts = ["Formal","Semi-Formal","Casual","Technical","Legal"]
+
+    with sc1:
+        enc_val = st.selectbox("Encoding ที่ใช้", enc_opts,
+            index=enc_opts.index(sg.get("encoding","UTF-8")), key="sg_encoding")
+        sg["encoding"] = enc_val
+
+        font_val = st.text_input("ชื่อ Font (ถ้ากำหนด)", value=sg.get("font",""),
+            placeholder="เช่น Sarabun, TH Sarabun New", key="sg_font")
+        sg["font"] = font_val
+
+    with sc2:
+        tone_val = st.selectbox("ระดับภาษา (Tone)", tone_opts,
+            index=tone_opts.index(sg.get("tone","Formal")), key="sg_tone")
+        sg["tone"] = tone_val
+
+        enc_chk = st.toggle("เปิดใช้การตรวจ Encoding", value=sg.get("check_encoding",True),
+            key="sg_check_encoding")
+        sg["check_encoding"] = enc_chk
+
+    with sc3:
+        len_chk = st.toggle("เปิดใช้การตรวจความยาว", value=sg.get("check_length",True),
+            key="sg_check_length")
+        sg["check_length"] = len_chk
+
+        if len_chk:
+            max_r = st.number_input("คำแปลยาวได้สูงสุด (×)", 0.5, 5.0,
+                value=float(sg.get("max_length_ratio",1.5)), step=0.1, key="sg_max_ratio")
+            sg["max_length_ratio"] = max_r
+
+            min_r = st.number_input("คำแปลสั้นได้ต่ำสุด (×)", 0.1, 2.0,
+                value=float(sg.get("min_length_ratio",0.5)), step=0.1, key="sg_min_ratio")
+            sg["min_length_ratio"] = min_r
+
+            if min_r >= max_r:
+                st.warning("⚠️ ค่าต่ำสุดต้องน้อยกว่าค่าสูงสุด")
+
+    # ── MQM Settings ──────────────────────────────────────────────────────────
+    st.markdown('<div class="sec-title">🎯 ตั้งค่าคะแนน MQM</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;color:#1b5e20;line-height:1.6;">
+    <strong>💡 MQM (Multidimensional Quality Metrics)</strong><br>
+    มาตรฐานวัดคุณภาพงานแปลที่ใช้ในอุตสาหกรรม — คะแนนคำนวณจาก:<br>
+    <code>Score = 100 − (Σ penalty) ÷ จำนวนคำ × 1,000</code><br>
+    สามารถปรับ penalty weight และเกณฑ์การตัดสินได้ตามมาตรฐานโปรเจกต์
+    </div>
+    """, unsafe_allow_html=True)
+
+    mw = st.session_state.get("mqm_weights", {"Minor":1,"Major":5,"Critical":25})
+    mt = st.session_state.get("mqm_threshold", {"excellent":90,"good":75,"acceptable":60})
+
+    mq1, mq2 = st.columns(2)
+    with mq1:
+        st.markdown("**⚖️ Penalty Weights (คะแนนหักต่อ error)**")
+        mw_minor = st.number_input("🟡 Minor — penalty (pts)", min_value=0, max_value=50,
+            value=int(mw.get("Minor",1)), step=1, key="mq_minor")
+        mw_major = st.number_input("🟠 Major — penalty (pts)", min_value=0, max_value=100,
+            value=int(mw.get("Major",5)), step=1, key="mq_major")
+        mw_crit  = st.number_input("🔴 Critical — penalty (pts)", min_value=0, max_value=200,
+            value=int(mw.get("Critical",25)), step=1, key="mq_crit")
+        st.session_state["mqm_weights"] = {"Minor": mw_minor, "Major": mw_major, "Critical": mw_crit}
+
+    with mq2:
+        st.markdown("**📊 เกณฑ์ระดับคุณภาพ (Grade Thresholds)**")
+        mt_excel = st.number_input("⭐ Excellent — คะแนนขั้นต่ำ", min_value=50, max_value=100,
+            value=int(mt.get("excellent",90)), step=1, key="mq_excellent")
+        mt_good  = st.number_input("✅ Good — คะแนนขั้นต่ำ", min_value=30, max_value=99,
+            value=int(mt.get("good",75)), step=1, key="mq_good")
+        mt_acc   = st.number_input("⚠️ Acceptable — คะแนนขั้นต่ำ", min_value=0, max_value=98,
+            value=int(mt.get("acceptable",60)), step=1, key="mq_acceptable")
+        st.session_state["mqm_threshold"] = {
+            "excellent": mt_excel, "good": mt_good, "acceptable": mt_acc
+        }
+        if not (mt_excel > mt_good > mt_acc):
+            st.warning("⚠️ เกณฑ์ต้องเรียงจากมากไปน้อย: Excellent > Good > Acceptable")
+
+        # preview
+        st.markdown(f"""
+        <div style="margin-top:0.6rem;font-size:0.85rem;line-height:2;">
+        ⭐ Excellent: ≥ {mt_excel} &nbsp;·&nbsp;
+        ✅ Good: ≥ {mt_good} &nbsp;·&nbsp;
+        ⚠️ Acceptable: ≥ {mt_acc} &nbsp;·&nbsp;
+        ❌ Rejected: &lt; {mt_acc}
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-title">✍️ กฎเครื่องหมายวรรคตอน</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background:#edf5ed;border:1px solid #c8e6c9;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.9rem;color:#2e7d32;line-height:1.6;">
+    <strong>💡 ประเภทเครื่องหมาย</strong><br>
+    <span style="background:#e3f2fd;color:#1565c0;padding:1px 7px;border-radius:4px;font-size:0.82rem;font-weight:600;">ไวยากรณ์</span>
+    &nbsp;เครื่องหมายที่เป็นส่วนหนึ่งของไวยากรณ์ภาษาอังกฤษ เช่น <code>. , ! ?</code> — <strong>ข้ามอัตโนมัติถ้า target เป็นภาษาไทย</strong><br>
+    <span style="background:#fce4ec;color:#880e4f;padding:1px 7px;border-radius:4px;font-size:0.82rem;font-weight:600;">อักขระพิเศษ</span>
+    &nbsp;สัญลักษณ์ที่ต้องคงไว้ในคำแปล เช่น <code>... — "</code> — <strong>ตรวจเสมอไม่ว่า target จะเป็นภาษาใด</strong>
+    </div>
+    """, unsafe_allow_html=True)
+
+    sev_bg   = {"Minor":"#fff8e1","Major":"#fff3e0","Critical":"#fce4ec"}
+    type_badge = {
+        "grammar": '<span style="background:#e3f2fd;color:#1565c0;padding:1px 7px;border-radius:4px;font-size:0.78rem;font-weight:600;white-space:nowrap;">ไวยากรณ์</span>',
+        "special": '<span style="background:#fce4ec;color:#880e4f;padding:1px 7px;border-radius:4px;font-size:0.78rem;font-weight:600;white-space:nowrap;">อักขระพิเศษ</span>',
+    }
+
+    for i, p in enumerate(sg["punctuation"]):
+        c2, c3, c4, c5, c6 = st.columns([1.0, 1.4, 3.5, 2.0, 0.7])
+        with c2:
+            bg = sev_bg.get(p.get("severity","Minor"),"#fff8e1")
+            st.markdown(f'<div style="padding-top:6px"><span style="font-family:monospace;background:{bg};padding:3px 10px;border-radius:5px;font-size:1rem;">{p["symbol"]}</span></div>', unsafe_allow_html=True)
+        with c3:
+            ptype = p.get("type","special")
+            st.markdown(f'<div style="padding-top:9px">{type_badge.get(ptype,"")}</div>', unsafe_allow_html=True)
+        with c4:
+            st.markdown(f'<div style="padding-top:10px;font-size:0.93rem;color:#444;">{p["name"]}</div>', unsafe_allow_html=True)
+        with c5:
+            sev_val = st.selectbox("", ["Minor","Major","Critical"],
+                index=["Minor","Major","Critical"].index(p.get("severity","Minor")),
+                key=f"psev_{i}", label_visibility="collapsed")
+            st.session_state["style_guide"]["punctuation"][i]["severity"] = sev_val
+        with c6:
+            st.markdown('<div style="padding-top:4px">', unsafe_allow_html=True)
+            if st.button("✕", key=f"pdel_{i}"):
+                st.session_state["style_guide"]["punctuation"].pop(i); st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.expander("➕ เพิ่มเครื่องหมายหรือสัญลักษณ์ใหม่", expanded=False):
+        st.caption("สามารถเพิ่มได้มากกว่า 1 สัญลักษณ์พร้อมกัน โดยคั่นด้วยช่องว่าง")
+        ns1, ns2, ns3, ns4 = st.columns([2, 2, 1.5, 1.5])
+        with ns1: new_syms = st.text_input("สัญลักษณ์", key="new_sym", placeholder="เช่น ※ · 〈 〉")
+        with ns2: new_name = st.text_input("ชื่อ/คำอธิบาย", key="new_sym_name", placeholder="เช่น เครื่องหมายอ้างอิง")
+        with ns3: new_ptype = st.selectbox("ประเภท", ["special","grammar"],
+            format_func=lambda x: "อักขระพิเศษ" if x=="special" else "ไวยากรณ์", key="new_sym_type")
+        with ns4: new_sev = st.selectbox("ระดับ", ["Minor","Major","Critical"], key="new_sym_sev")
+        if st.button("เพิ่มสัญลักษณ์", key="add_sym"):
+            syms = [s for s in new_syms.strip().split() if s]
+            if syms:
+                for sym in syms:
+                    sg["punctuation"].append({"symbol":sym,"name":new_name or sym,
+                        "type":new_ptype,"enabled":True,"severity":new_sev})
+                st.success(f"เพิ่ม {len(syms)} สัญลักษณ์เรียบร้อยแล้ว")
+                st.rerun()
+            else:
+                st.warning("กรุณาใส่สัญลักษณ์ก่อน")
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 4 — HISTORY
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_history:
+    history = st.session_state["history"]
+    if not history:
+        st.info("ยังไม่มีประวัติการตรวจสอบ กลับไปที่แท็บ 'ตรวจสอบ QA' แล้วกด 'เริ่มตรวจสอบ' ได้เลยค่ะ")
+    else:
+        hist_rows = []
+        for h in reversed(history):
+            c = h["counts"]
+            mqm_s = h.get("mqm_score")
+            mqm_g = h.get("mqm_grade","—")
+            mqm_display = f"{mqm_s:.1f} ({MQM_GRADE_TH.get(mqm_g, mqm_g)})" if mqm_s is not None else "—"
+            hist_rows.append({
+                "เวลา": h["timestamp"], "ชื่อไฟล์": h["filename"], "จำนวนแถว": h["total"],
+                "✅ ผ่าน": c.get("Pass",0), "🟡 Minor": c.get("Minor",0),
+                "🟠 Major": c.get("Major",0), "🔴 Critical": c.get("Critical",0),
+                "อัตราผ่าน": f"{c.get('Pass',0)/h['total']*100:.0f}%" if h["total"] else "—",
+                "🎯 MQM Score": mqm_display,
+            })
+        st.dataframe(pd.DataFrame(hist_rows), use_container_width=True, hide_index=True)
+
+        st.markdown('<div class="sec-title">รายละเอียดแต่ละครั้ง</div>', unsafe_allow_html=True)
+        for j, h in enumerate(reversed(history)):
+            mqm_s = h.get("mqm_score")
+            mqm_g = h.get("mqm_grade","—")
+            mqm_label = f"  ·  🎯 MQM {mqm_s:.1f} ({MQM_GRADE_TH.get(mqm_g,mqm_g)})" if mqm_s is not None else ""
+            with st.expander(f"📄 {h['filename']}  ·  {h['timestamp']}  ·  {h['total']} แถว{mqm_label}"):
+                c = h["counts"]
+                st.markdown(f"""
+                <div class="stats-row">
+                  <div class="stat-box stat-pass" ><div class="s-num">{c.get('Pass',0)}</div><div class="s-lbl">✅ ผ่าน</div></div>
+                  <div class="stat-box stat-minor"><div class="s-num">{c.get('Minor',0)}</div><div class="s-lbl">🟡 Minor</div></div>
+                  <div class="stat-box stat-major"><div class="s-num">{c.get('Major',0)}</div><div class="s-lbl">🟠 Major</div></div>
+                  <div class="stat-box stat-crit" ><div class="s-num">{c.get('Critical',0)}</div><div class="s-lbl">🔴 Critical</div></div>
+                </div>
+                """, unsafe_allow_html=True)
+                rows2 = []
+                for r in h["results"]:
+                    for iss in (r["issues"] if r["issues"] else [{"rule":"—","severity":"Pass","detail":"ไม่พบปัญหา"}]):
+                        rows2.append({"#":r["row"],"Source":r["source"],"Target":r["target"],
+                            "Rule":iss.get("rule","—"),"ระดับ":iss.get("severity","Pass"),"รายละเอียด":iss.get("detail","")})
+                df2 = pd.DataFrame(rows2)
+                st.download_button("⬇ ดาวน์โหลด session นี้",
+                    df2.to_csv(index=False).encode("utf-8-sig"),
+                    file_name=f"qa_{h['timestamp'].replace(':','').replace(' ','_')}.csv",
+                    mime="text/csv", key=f"hdl_{j}")
+
+        st.write("")
+        if st.button("🗑 ล้างประวัติทั้งหมด"):
+            st.session_state["history"] = []; st.rerun()
